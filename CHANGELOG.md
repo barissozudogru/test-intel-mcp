@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-03-12
+
+### Fixed
+
+- Brace counting now tracks string/comment/template-literal context (was corrupted by braces in strings)
+- Cobertura parser computes actual function coverage (was hardcoded to 100%)
+- Symlink loops in directory scanning no longer cause stack overflow
+- Cyclomatic complexity: removed else/switch/forEach/map/filter/reduce overcounting, added ?? and ?. operators
+- Arrow functions without braces no longer capture 500 lines of garbage
+- Unified function detection patterns across all tools (was inconsistent)
+- Block comments no longer produce phantom function detections
+- LCOV records without end_of_record are no longer silently dropped
+- LCOV duplicate file records are merged instead of overwritten
+- Import detection uses precise path segment matching (was false-positive prone)
+- Regex injection in suggest_test_cases function name escaping
+- Error messages now include proper error details instead of bare String(err)
+
+### Added
+
+- Filesystem sandboxing: all paths validated against working directory (prevents path traversal)
+- Max directory depth limit (50) prevents stack overflow on deep trees
+- isError flag on all MCP error responses
+- Dynamic version from package.json
+
 ## [0.1.0] - 2026-03-12
 
 ### Added
