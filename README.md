@@ -1,6 +1,15 @@
-# test-gap-mcp
+# test-intel-mcp
 
-MCP server that analyzes TypeScript and JavaScript projects to find test coverage gaps. Reads local files directly — no tokens, no external services, no authentication required.
+<p align="center">
+  <img alt="version" src="https://img.shields.io/badge/npm-0.4.0-cb3837?style=flat-square&logo=npm&logoColor=white" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" />
+  <img alt="Node" src="https://img.shields.io/badge/Node-%3E%3D18-339933?style=flat-square&logo=node.js&logoColor=white" />
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" />
+  <img alt="MCP Server" src="https://img.shields.io/badge/MCP-Server-8A2BE2?style=flat-square" />
+  <img alt="No Auth" src="https://img.shields.io/badge/No_Auth_Required-brightgreen?style=flat-square" />
+</p>
+
+Test coverage intelligence MCP server for TypeScript and JavaScript projects. Analyzes coverage reports, detects untested functions, and scores cyclomatic complexity — all locally, with no tokens, no external services, and no authentication required.
 
 Compatible with: Claude Desktop | Claude Code | Cursor | Windsurf | VS Code | Cline | Continue | Zed | JetBrains | ChatGPT
 
@@ -28,9 +37,9 @@ Config file: `~/Library/Application Support/Claude/claude_desktop_config.json`
 ```json
 {
   "mcpServers": {
-    "test-gap": {
+    "test-intel": {
       "command": "npx",
-      "args": ["-y", "@barissozudogru/test-gap-mcp"]
+      "args": ["-y", "@barissozudogru/test-intel-mcp"]
     }
   }
 }
@@ -39,7 +48,7 @@ Config file: `~/Library/Application Support/Claude/claude_desktop_config.json`
 #### Claude Code
 
 ```bash
-claude mcp add test-gap -- npx -y @barissozudogru/test-gap-mcp
+claude mcp add test-intel -- npx -y @barissozudogru/test-intel-mcp
 ```
 
 #### Cursor
@@ -49,9 +58,9 @@ Config file: `~/.cursor/mcp.json`
 ```json
 {
   "mcpServers": {
-    "test-gap": {
+    "test-intel": {
       "command": "npx",
-      "args": ["-y", "@barissozudogru/test-gap-mcp"]
+      "args": ["-y", "@barissozudogru/test-intel-mcp"]
     }
   }
 }
@@ -64,9 +73,9 @@ Config file: `~/.codeium/windsurf/mcp_config.json`
 ```json
 {
   "mcpServers": {
-    "test-gap": {
+    "test-intel": {
       "command": "npx",
-      "args": ["-y", "@barissozudogru/test-gap-mcp"]
+      "args": ["-y", "@barissozudogru/test-intel-mcp"]
     }
   }
 }
@@ -79,10 +88,10 @@ Config file: `.vscode/mcp.json`
 ```json
 {
   "servers": {
-    "test-gap": {
+    "test-intel": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@barissozudogru/test-gap-mcp"]
+      "args": ["-y", "@barissozudogru/test-intel-mcp"]
     }
   }
 }
@@ -93,9 +102,9 @@ Config file: `.vscode/mcp.json`
 ```json
 {
   "mcpServers": {
-    "test-gap": {
+    "test-intel": {
       "command": "npx",
-      "args": ["-y", "@barissozudogru/test-gap-mcp"]
+      "args": ["-y", "@barissozudogru/test-intel-mcp"]
     }
   }
 }
@@ -107,11 +116,11 @@ Config file: `~/.continue/config.yaml`
 
 ```yaml
 mcpServers:
-  - name: test-gap
+  - name: test-intel
     command: npx
     args:
       - -y
-      - "@barissozudogru/test-gap-mcp"
+      - "@barissozudogru/test-intel-mcp"
 ```
 
 #### Zed
@@ -121,10 +130,10 @@ Config file: `~/.config/zed/settings.json`
 ```json
 {
   "context_servers": {
-    "test-gap": {
+    "test-intel": {
       "command": {
         "path": "npx",
-        "args": ["-y", "@barissozudogru/test-gap-mcp"]
+        "args": ["-y", "@barissozudogru/test-intel-mcp"]
       }
     }
   }
@@ -136,9 +145,9 @@ Config file: `~/.config/zed/settings.json`
 ```json
 {
   "mcpServers": {
-    "test-gap": {
+    "test-intel": {
       "command": "npx",
-      "args": ["-y", "@barissozudogru/test-gap-mcp"]
+      "args": ["-y", "@barissozudogru/test-intel-mcp"]
     }
   }
 }
@@ -151,9 +160,9 @@ Config file: `~/.config/zed/settings.json`
 Start the server:
 
 ```bash
-npx @barissozudogru/test-gap-mcp --http
+npx @barissozudogru/test-intel-mcp --http
 # or
-PORT=3000 TRANSPORT=http npx @barissozudogru/test-gap-mcp
+PORT=3000 TRANSPORT=http npx @barissozudogru/test-intel-mcp
 ```
 
 The server listens on `http://0.0.0.0:3000/mcp`. A health check is available at `/health`.
@@ -163,7 +172,7 @@ The server listens on `http://0.0.0.0:3000/mcp`. A health check is available at 
 ```json
 {
   "mcpServers": {
-    "test-gap": {
+    "test-intel": {
       "url": "http://localhost:3000/mcp"
     }
   }
@@ -175,7 +184,7 @@ The server listens on `http://0.0.0.0:3000/mcp`. A health check is available at 
 ```json
 {
   "servers": {
-    "test-gap": {
+    "test-intel": {
       "type": "http",
       "url": "http://localhost:3000/mcp"
     }
@@ -188,7 +197,7 @@ The server listens on `http://0.0.0.0:3000/mcp`. A health check is available at 
 ```json
 {
   "mcpServers": {
-    "test-gap": {
+    "test-intel": {
       "serverUrl": "http://localhost:3000/mcp"
     }
   }
@@ -199,7 +208,7 @@ The server listens on `http://0.0.0.0:3000/mcp`. A health check is available at 
 
 ```yaml
 mcpServers:
-  - name: test-gap
+  - name: test-intel
     url: http://localhost:3000/mcp
 ```
 
@@ -208,8 +217,8 @@ mcpServers:
 ### Option C: Docker
 
 ```bash
-docker build -t test-gap-mcp .
-docker run -p 3000:3000 -v $(pwd):/project -w /project test-gap-mcp
+docker build -t test-intel-mcp .
+docker run -p 3000:3000 -v $(pwd):/project -w /project test-intel-mcp
 ```
 
 Then configure any HTTP client to point at `http://localhost:3000/mcp`.

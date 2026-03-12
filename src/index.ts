@@ -885,7 +885,7 @@ function suggestTestCases(functionBody: string, functionName: string): TestCaseS
 // ---------------------------------------------------------------------------
 
 // Fix 15: Use VERSION from package.json
-const server = new McpServer({ name: 'test-gap-mcp', version: VERSION });
+const server = new McpServer({ name: 'test-intel-mcp', version: VERSION });
 
 // Tool 1: analyze_test_coverage
 server.registerTool(
@@ -1244,16 +1244,16 @@ async function main() {
     });
 
     app.get('/health', (_req, res) => {
-      res.json({ status: 'ok', server: 'test-gap-mcp', version: VERSION });
+      res.json({ status: 'ok', server: 'test-intel-mcp', version: VERSION });
     });
 
     app.listen(port, () => {
-      process.stderr.write(`test-gap-mcp v${VERSION} listening on http://0.0.0.0:${port}/mcp\n`);
+      process.stderr.write(`test-intel-mcp v${VERSION} listening on http://0.0.0.0:${port}/mcp\n`);
     });
   } else {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    process.stderr.write(`test-gap-mcp v${VERSION} running on stdio\n`);
+    process.stderr.write(`test-intel-mcp v${VERSION} running on stdio\n`);
   }
 }
 

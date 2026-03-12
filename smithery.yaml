@@ -1,8 +1,8 @@
-name: test-gap-mcp
-description: Analyze test coverage gaps - parse lcov/istanbul/cobertura, detect untested functions, calculate complexity
+name: test-intel-mcp
+description: Test coverage intelligence MCP server - coverage analysis, untested function detection, and complexity scoring
 author: barissozudogru
 license: MIT
-repository: https://github.com/barissozudogru/test-gap-mcp
+repository: https://github.com/barissozudogru/test-intel-mcp
 startCommand:
   type: stdio
   configSchema:
@@ -11,5 +11,5 @@ startCommand:
   commandFunction: |-
     (config) => ({
       command: 'npx',
-      args: ['-y', '@barissozudogru/test-gap-mcp']
+      args: ['-y', '@barissozudogru/test-intel-mcp']
     })

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-03-12
+
+### Changed
+
+- Renamed from test-gap-mcp to test-intel-mcp for cohesive branding as part of the intel MCP suite
+
 ## [0.3.0] - 2026-03-12
 
 ### Added

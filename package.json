@@ -1,11 +1,11 @@
 {
-  "name": "@barissozudogru/test-gap-mcp",
-  "version": "0.3.0",
-  "description": "MCP server that identifies untested code and suggests test cases",
+  "name": "@barissozudogru/test-intel-mcp",
+  "version": "0.4.0",
+  "description": "Test coverage intelligence MCP server - coverage analysis, untested function detection, and complexity scoring",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "test-gap-mcp": "dist/index.js"
+    "test-intel-mcp": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -24,18 +24,18 @@
     "coverage",
     "typescript",
     "developer-tools",
-    "test-gap",
+    "test-intel",
     "test-coverage"
   ],
   "author": "barissozudogru",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/barissozudogru/test-gap-mcp.git"
+    "url": "https://github.com/barissozudogru/test-intel-mcp.git"
   },
-  "homepage": "https://github.com/barissozudogru/test-gap-mcp#readme",
+  "homepage": "https://github.com/barissozudogru/test-intel-mcp#readme",
   "bugs": {
-    "url": "https://github.com/barissozudogru/test-gap-mcp/issues"
+    "url": "https://github.com/barissozudogru/test-intel-mcp/issues"
   },
   "engines": {
     "node": ">=18"
