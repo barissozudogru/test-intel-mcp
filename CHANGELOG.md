@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-03-12
+
+### Added
+
+- Streamable HTTP transport for remote MCP clients
+- `--http` flag and `TRANSPORT=http` environment variable to select HTTP mode
+- Health check endpoint at `/health` returning server name and version
+- Dockerfile for containerized deployment
+- smithery.yaml for Smithery registry
+- Configuration examples for 10+ MCP clients (Claude Desktop, Claude Code, Cursor, Windsurf, VS Code, Cline, Continue, Zed, JetBrains, ChatGPT)
+
 ## [0.2.0] - 2026-03-12
 
 ### Fixed

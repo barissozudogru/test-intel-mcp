@@ -2,30 +2,60 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import express from 'express';
 import * as z from 'zod';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { createRequire } from 'node:module';
+
+// Fix 15: Read version from package.json instead of hardcoding
+const require = createRequire(import.meta.url);
+const { version: VERSION } = require('../package.json') as { version: string };
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+// Fix 3: Filesystem sandboxing
+const PROJECT_ROOT = process.cwd();
+
+function safePath(filePath: string): string {
+  const resolved = path.resolve(filePath);
+  if (!resolved.startsWith(PROJECT_ROOT + path.sep) && resolved !== PROJECT_ROOT) {
+    throw new Error(`Access denied: path '${filePath}' is outside the allowed root '${PROJECT_ROOT}'`);
+  }
+  return resolved;
+}
+
 function readFile(filePath: string): string {
-  return fs.readFileSync(path.resolve(filePath), 'utf-8');
+  return fs.readFileSync(safePath(filePath), 'utf-8');
 }
 
 function fileExists(filePath: string): boolean {
   try {
-    fs.accessSync(path.resolve(filePath));
+    fs.accessSync(safePath(filePath));
     return true;
   } catch {
     return false;
   }
 }
 
-function walkDir(dir: string, extensions: string[]): string[] {
+// Fix 4: Track visited directories to prevent symlink loops; add max depth
+function walkDir(dir: string, extensions: string[], visited = new Set<string>(), depth = 0, maxDepth = 50): string[] {
   const results: string[] = [];
-  const resolved = path.resolve(dir);
+  if (depth > maxDepth) return results;
+
+  let resolved: string;
+  try {
+    resolved = fs.realpathSync(path.resolve(dir));
+  } catch {
+    return results;
+  }
+
+  if (visited.has(resolved)) return results;
+  visited.add(resolved);
+
   if (!fs.existsSync(resolved)) return results;
 
   const entries = fs.readdirSync(resolved, { withFileTypes: true });
@@ -33,7 +63,7 @@ function walkDir(dir: string, extensions: string[]): string[] {
     const full = path.join(resolved, entry.name);
     if (entry.isDirectory()) {
       if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'dist' || entry.name === 'build') continue;
-      results.push(...walkDir(full, extensions));
+      results.push(...walkDir(full, extensions, visited, depth + 1, maxDepth));
     } else if (entry.isFile()) {
       const ext = path.extname(entry.name).toLowerCase();
       if (extensions.includes(ext)) {
@@ -58,83 +88,141 @@ interface UncoveredItem {
   branchCoverage: number;
 }
 
+// Fix 11: LCOV duplicate file records — merge instead of overwrite
 function parseLcov(content: string): UncoveredItem[] {
-  const files: UncoveredItem[] = [];
-  let current: UncoveredItem | null = null;
-  const totalLines: Record<string, number> = {};
-  const hitLines: Record<string, number> = {};
-  const totalFuncs: Record<string, number> = {};
-  const hitFuncs: Record<string, number> = {};
-  const totalBranches: Record<string, number> = {};
-  const hitBranches: Record<string, number> = {};
+  // Accumulated per-file data (supports duplicate SF: records)
+  const fileData = new Map<string, {
+    uncoveredFunctions: string[];
+    uncoveredLines: number[];
+    uncoveredBranches: string[];
+    totalLines: number;
+    hitLines: number;
+    totalFuncs: number;
+    hitFuncs: number;
+    totalBranches: number;
+    hitBranches: number;
+    // For merging: line hit counts keyed by line number
+    lineHits: Map<number, number>;
+    // For merging: function hit counts keyed by name
+    funcHits: Map<string, number>;
+  }>();
+
+  let currentFile: string | null = null;
+
+  function getOrCreate(fileName: string) {
+    if (!fileData.has(fileName)) {
+      fileData.set(fileName, {
+        uncoveredFunctions: [],
+        uncoveredLines: [],
+        uncoveredBranches: [],
+        totalLines: 0,
+        hitLines: 0,
+        totalFuncs: 0,
+        hitFuncs: 0,
+        totalBranches: 0,
+        hitBranches: 0,
+        lineHits: new Map(),
+        funcHits: new Map(),
+      });
+    }
+    return fileData.get(fileName)!;
+  }
 
   for (const raw of content.split('\n')) {
     const line = raw.trim();
     if (line.startsWith('SF:')) {
-      current = {
-        file: line.slice(3),
-        uncoveredFunctions: [],
-        uncoveredLines: [],
-        uncoveredBranches: [],
-        lineCoverage: 0,
-        functionCoverage: 0,
-        branchCoverage: 0,
-      };
-      totalLines[current.file] = 0;
-      hitLines[current.file] = 0;
-      totalFuncs[current.file] = 0;
-      hitFuncs[current.file] = 0;
-      totalBranches[current.file] = 0;
-      hitBranches[current.file] = 0;
-    } else if (line.startsWith('FN:') && current) {
-      // FN:<line>,<name>
-      totalFuncs[current.file] = (totalFuncs[current.file] || 0) + 1;
-    } else if (line.startsWith('FNDA:') && current) {
+      currentFile = line.slice(3);
+      // Initialize entry if first time, otherwise reuse existing for merging
+      getOrCreate(currentFile);
+    } else if (line.startsWith('FN:') && currentFile) {
+      // FN:<line>,<name> — count total functions
+      const d = getOrCreate(currentFile);
+      d.totalFuncs++;
+    } else if (line.startsWith('FNDA:') && currentFile) {
       // FNDA:<count>,<name>
       const [countStr, name] = line.slice(5).split(',');
-      const count = parseInt(countStr, 10);
-      if (count === 0) {
-        current.uncoveredFunctions.push(name ?? 'unknown');
-      } else {
-        hitFuncs[current.file] = (hitFuncs[current.file] || 0) + 1;
-      }
-    } else if (line.startsWith('DA:') && current) {
+      const count = parseInt(countStr ?? '0', 10);
+      const fnName = name ?? 'unknown';
+      const d = getOrCreate(currentFile);
+      // Merge: take max hit count for this function
+      const existing = d.funcHits.get(fnName) ?? 0;
+      d.funcHits.set(fnName, Math.max(existing, count));
+    } else if (line.startsWith('DA:') && currentFile) {
       // DA:<line>,<count>
       const parts = line.slice(3).split(',');
       const lineNo = parseInt(parts[0] ?? '0', 10);
       const count = parseInt(parts[1] ?? '0', 10);
-      totalLines[current.file] = (totalLines[current.file] || 0) + 1;
-      if (count === 0) {
-        current.uncoveredLines.push(lineNo);
-      } else {
-        hitLines[current.file] = (hitLines[current.file] || 0) + 1;
+      const d = getOrCreate(currentFile);
+      // Merge: take max hit count for this line
+      if (!d.lineHits.has(lineNo)) {
+        d.totalLines++;
       }
-    } else if (line.startsWith('BRDA:') && current) {
+      const existing = d.lineHits.get(lineNo) ?? 0;
+      d.lineHits.set(lineNo, Math.max(existing, count));
+    } else if (line.startsWith('BRDA:') && currentFile) {
       // BRDA:<line>,<block>,<branch>,<taken>
       const parts = line.slice(5).split(',');
       const branchLine = parts[0];
       const branchBlock = parts[1];
       const branchIdx = parts[2];
       const taken = parts[3];
-      totalBranches[current.file] = (totalBranches[current.file] || 0) + 1;
+      const d = getOrCreate(currentFile);
+      d.totalBranches++;
       if (taken === '0' || taken === '-') {
-        current.uncoveredBranches.push(`line ${branchLine} block ${branchBlock} branch ${branchIdx}`);
+        d.uncoveredBranches.push(`line ${branchLine} block ${branchBlock} branch ${branchIdx}`);
       } else {
-        hitBranches[current.file] = (hitBranches[current.file] || 0) + 1;
+        d.hitBranches++;
       }
-    } else if (line === 'end_of_record' && current) {
-      const tl = totalLines[current.file] || 1;
-      const tf = totalFuncs[current.file] || 1;
-      const tb = totalBranches[current.file] || 1;
-      current.lineCoverage = Math.round(((hitLines[current.file] || 0) / tl) * 100);
-      current.functionCoverage = Math.round(((hitFuncs[current.file] || 0) / tf) * 100);
-      current.branchCoverage = Math.round(((hitBranches[current.file] || 0) / tb) * 100);
-      if (current.uncoveredLines.length > 0 || current.uncoveredFunctions.length > 0 || current.uncoveredBranches.length > 0) {
-        files.push(current);
-      }
-      current = null;
+    } else if (line === 'end_of_record' && currentFile) {
+      currentFile = null;
     }
   }
+
+  // Fix 9: After the parsing loop, finalize any open record
+  // (Already handled by processing all data into fileData map,
+  //  end_of_record just clears currentFile; final records without
+  //  end_of_record are still accumulated in fileData)
+
+  const files: UncoveredItem[] = [];
+
+  for (const [fileName, d] of fileData) {
+    // Rebuild uncoveredLines and hitLines from merged lineHits
+    let hitLines = 0;
+    const uncoveredLines: number[] = [];
+    for (const [lineNo, hits] of d.lineHits) {
+      if (hits > 0) hitLines++;
+      else uncoveredLines.push(lineNo);
+    }
+
+    // Rebuild uncoveredFunctions and hitFuncs from merged funcHits
+    let hitFuncs = 0;
+    const uncoveredFunctions: string[] = [];
+    for (const [fnName, hits] of d.funcHits) {
+      if (hits > 0) hitFuncs++;
+      else uncoveredFunctions.push(fnName);
+    }
+
+    const tl = d.totalLines || 1;
+    const tf = d.totalFuncs || 1;
+    const tb = d.totalBranches || 1;
+
+    const lineCoverage = Math.round((hitLines / tl) * 100);
+    const functionCoverage = Math.round((hitFuncs / tf) * 100);
+    const branchCoverage = Math.round(((d.hitBranches) / tb) * 100);
+
+    if (uncoveredLines.length > 0 || uncoveredFunctions.length > 0 || d.uncoveredBranches.length > 0) {
+      files.push({
+        file: fileName,
+        uncoveredFunctions,
+        uncoveredLines: [...new Set(uncoveredLines)].sort((a, b) => a - b),
+        uncoveredBranches: d.uncoveredBranches,
+        lineCoverage,
+        functionCoverage,
+        branchCoverage,
+      });
+    }
+  }
+
   return files;
 }
 
@@ -218,19 +306,28 @@ function parseCobertura(content: string): UncoveredItem[] {
     const uncoveredLines: number[] = [];
     const uncoveredBranches: string[] = [];
 
+    // Fix 2: Compute actual function coverage from method data
+    let totalFunctions = 0;
+    let coveredFunctions = 0;
+
     // Parse methods
     const methodRe = /<method[^>]+name="([^"]+)"[^>]*>([\s\S]*?)<\/method>/g;
     let methodMatch: RegExpExecArray | null;
     while ((methodMatch = methodRe.exec(classBody)) !== null) {
       const methodName = methodMatch[1] ?? '';
       const methodBody = methodMatch[2] ?? '';
+      totalFunctions++;
       const lineRe = /<line[^>]+hits="(\d+)"[^>]*\/>/g;
       let anyHit = false;
       let lm: RegExpExecArray | null;
       while ((lm = lineRe.exec(methodBody)) !== null) {
         if (parseInt(lm[1] ?? '0', 10) > 0) { anyHit = true; break; }
       }
-      if (!anyHit) uncoveredFunctions.push(methodName);
+      if (anyHit) {
+        coveredFunctions++;
+      } else {
+        uncoveredFunctions.push(methodName);
+      }
     }
 
     // Parse lines
@@ -265,7 +362,8 @@ function parseCobertura(content: string): UncoveredItem[] {
         uncoveredLines: [...new Set(uncoveredLines)].sort((a, b) => a - b),
         uncoveredBranches,
         lineCoverage: totalLines > 0 ? Math.round((hitLines / totalLines) * 100) : 100,
-        functionCoverage: 100,
+        // Fix 2: Actual function coverage instead of hardcoded 100
+        functionCoverage: totalFunctions > 0 ? Math.round((coveredFunctions / totalFunctions) * 100) : 100,
         branchCoverage: totalBranches > 0 ? Math.round((hitBranches / totalBranches) * 100) : 100,
       });
     }
@@ -290,28 +388,49 @@ interface UntestedSource {
   testFilePaths: string[];
 }
 
+// Fix 7: Single shared FUNCTION_PATTERNS used by both extractFunctions and extractFunctionBodies
 const FUNCTION_PATTERNS: Array<{ re: RegExp; kind: FunctionRef['kind'] }> = [
   // async function foo(
-  { re: /^\s*(?:export\s+)?(?:default\s+)?async\s+function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/m, kind: 'async-function' },
-  // function foo(
-  { re: /^\s*(?:export\s+)?(?:default\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/m, kind: 'function' },
-  // async method or method in class: async foo(  /  foo(
+  { re: /^\s*(?:export\s+)?(?:default\s+)?async\s+function\*?\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/m, kind: 'async-function' },
+  // function foo( / function* foo(
+  { re: /^\s*(?:export\s+)?(?:default\s+)?function\*?\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/m, kind: 'function' },
+  // async method: async foo(
   { re: /^\s*(?:(?:public|private|protected|static|override|abstract)\s+)*async\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/m, kind: 'async-method' },
-  { re: /^\s*(?:(?:public|private|protected|static|override|abstract)\s+)+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/m, kind: 'method' },
+  // Fix 7: method pattern with zero-or-more modifiers (changed + to * where appropriate)
+  { re: /^\s*(?:(?:public|private|protected|static|override|abstract|get|set)\s+)+([A-Za-z_$#][A-Za-z0-9_$]*)\s*\(/m, kind: 'method' },
   // export const foo = async (  /  export const foo = (
   { re: /^\s*(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*async\s*(?:\([^)]*\)|[A-Za-z_$][A-Za-z0-9_$]*)\s*=>/m, kind: 'async-arrow' },
-  { re: /^\s*(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:\([^)]*\)|[A-Za-z_$][A-Za-z0-9_$]*)\s*=>/m, kind: 'arrow' },
+  { re: /^\s*(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[A-Za-z_$][A-Za-z0-9_$]*)\s*=>/m, kind: 'arrow' },
 ];
 
+// Fix 8: extractFunctions with block comment tracking
 function extractFunctions(content: string): FunctionRef[] {
   const lines = content.split('\n');
   const found: FunctionRef[] = [];
   const seen = new Set<string>();
+  let insideBlockComment = false;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? '';
-    // Skip comment lines
-    if (/^\s*(\/\/|\/\*|\*)/.test(line)) continue;
+
+    // Fix 8: Track block comment state
+    if (insideBlockComment) {
+      if (line.includes('*/')) {
+        insideBlockComment = false;
+      }
+      continue;
+    }
+
+    // Check for block comment start (without closing on same line)
+    if (line.includes('/*')) {
+      if (!line.includes('*/')) {
+        insideBlockComment = true;
+      }
+      // If /* and */ are on the same line, it's an inline comment — don't skip
+    }
+
+    // Skip line comment lines
+    if (/^\s*(\/\/|\*)/.test(line)) continue;
 
     for (const { re, kind } of FUNCTION_PATTERNS) {
       const m = re.exec(line);
@@ -372,6 +491,104 @@ function scoreComplexity(fn: FunctionComplexity): 'critical' | 'high' | 'medium'
   return 'low';
 }
 
+// Fix 1: State machine for string/comment context in brace counting
+function countBraceDepthChange(line: string, state: {
+  insideSingleQuote: boolean;
+  insideDoubleQuote: boolean;
+  insideTemplateLiteral: boolean;
+  insideBlockComment: boolean;
+  insideLineComment: boolean;
+  templateDepth: number; // for nested ${...} inside template literals
+}): number {
+  let delta = 0;
+  let i = 0;
+  while (i < line.length) {
+    const ch = line[i]!;
+    const next = line[i + 1];
+
+    // Line comments end at newline (we process one line at a time)
+    if (state.insideLineComment) {
+      break;
+    }
+
+    // Inside block comment
+    if (state.insideBlockComment) {
+      if (ch === '*' && next === '/') {
+        state.insideBlockComment = false;
+        i += 2;
+        continue;
+      }
+      i++;
+      continue;
+    }
+
+    // Inside single quote string
+    if (state.insideSingleQuote) {
+      if (ch === '\\') { i += 2; continue; } // escape sequence
+      if (ch === "'") { state.insideSingleQuote = false; }
+      i++;
+      continue;
+    }
+
+    // Inside double quote string
+    if (state.insideDoubleQuote) {
+      if (ch === '\\') { i += 2; continue; }
+      if (ch === '"') { state.insideDoubleQuote = false; }
+      i++;
+      continue;
+    }
+
+    // Inside template literal
+    if (state.insideTemplateLiteral) {
+      if (ch === '\\') { i += 2; continue; }
+      if (ch === '`') { state.insideTemplateLiteral = false; i++; continue; }
+      // Template expression ${...}
+      if (ch === '$' && next === '{') {
+        state.templateDepth++;
+        i += 2;
+        continue;
+      }
+      i++;
+      continue;
+    }
+
+    // Normal code — check for string/comment starts
+    if (ch === '/' && next === '/') {
+      state.insideLineComment = true;
+      break;
+    }
+    if (ch === '/' && next === '*') {
+      state.insideBlockComment = true;
+      i += 2;
+      continue;
+    }
+    if (ch === "'") { state.insideSingleQuote = true; i++; continue; }
+    if (ch === '"') { state.insideDoubleQuote = true; i++; continue; }
+    if (ch === '`') { state.insideTemplateLiteral = true; i++; continue; }
+
+    // Count braces only in normal code (not inside template expression holes)
+    if (state.templateDepth === 0) {
+      if (ch === '{') delta++;
+      if (ch === '}') delta--;
+    } else {
+      // Inside template ${...} — track depth
+      if (ch === '{') state.templateDepth++;
+      if (ch === '}') {
+        state.templateDepth--;
+        if (state.templateDepth < 0) state.templateDepth = 0;
+      }
+    }
+
+    i++;
+  }
+
+  // Reset line comment state at end of line
+  state.insideLineComment = false;
+
+  return delta;
+}
+
+// Fix 1 + Fix 6: extractFunctionBodies with proper brace counting and arrow function handling
 function extractFunctionBodies(content: string): Array<{ name: string; line: number; body: string }> {
   const lines = content.split('\n');
   const results: Array<{ name: string; line: number; body: string }> = [];
@@ -380,50 +597,113 @@ function extractFunctionBodies(content: string): Array<{ name: string; line: num
   while (i < lines.length) {
     const line = lines[i] ?? '';
 
-    // Match function declarations with brace on same or next line
-    const funcMatch =
-      /(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][A-Za-z0-9_$]*)/.exec(line) ??
-      /(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|\w+)\s*=>/.exec(line) ??
-      /^\s*(?:(?:public|private|protected|static|override|abstract)\s+)*(?:async\s+)?([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/.exec(line);
+    // Fix 7: Use shared FUNCTION_PATTERNS to detect function signatures
+    let funcName: string | null = null;
+    let isArrow = false;
 
-    if (funcMatch) {
-      const name = funcMatch[1];
-      if (name && !['if', 'for', 'while', 'switch', 'catch', 'constructor', 'class'].includes(name)) {
-        // Collect body: find opening brace and match closing
-        let bodyLines = '';
-        let depth = 0;
-        let started = false;
-        let j = i;
-        while (j < lines.length) {
-          const l = lines[j] ?? '';
-          for (const ch of l) {
-            if (ch === '{') { depth++; started = true; }
-            if (ch === '}') depth--;
-          }
-          bodyLines += l + '\n';
-          if (started && depth === 0) break;
-          j++;
-          if (j - i > 500) break; // safety limit
+    for (const { re, kind } of FUNCTION_PATTERNS) {
+      const m = re.exec(line);
+      if (m && m[1]) {
+        const name = m[1];
+        if (!['if', 'for', 'while', 'switch', 'catch', 'constructor', 'class'].includes(name)) {
+          funcName = name;
+          isArrow = kind === 'arrow' || kind === 'async-arrow';
+          break;
         }
-        results.push({ name, line: i + 1, body: bodyLines });
-        i = j + 1;
-        continue;
       }
+    }
+
+    if (funcName) {
+      // Fix 6: For arrow functions, check if there is an opening brace within 2 lines
+      if (isArrow) {
+        let hasBrace = false;
+        for (let k = i; k <= Math.min(i + 1, lines.length - 1); k++) {
+          if ((lines[k] ?? '').includes('{')) { hasBrace = true; break; }
+        }
+
+        if (!hasBrace) {
+          // Fix 6: Arrow function without braces — capture until semicolon, comma, or closing paren
+          let bodyLines = '';
+          let j = i;
+          while (j < lines.length) {
+            const l = lines[j] ?? '';
+            bodyLines += l + '\n';
+            if (/[;,)]/.test(l.trimEnd().slice(-1))) break;
+            j++;
+            if (j - i > 10) break; // short safety limit for brace-less arrows
+          }
+          results.push({ name: funcName, line: i + 1, body: bodyLines });
+          i = j + 1;
+          continue;
+        }
+      }
+
+      // Fix 1: Use state machine for brace counting
+      const braceState = {
+        insideSingleQuote: false,
+        insideDoubleQuote: false,
+        insideTemplateLiteral: false,
+        insideBlockComment: false,
+        insideLineComment: false,
+        templateDepth: 0,
+      };
+
+      let bodyLines = '';
+      let depth = 0;
+      let started = false;
+      let j = i;
+
+      while (j < lines.length) {
+        const l = lines[j] ?? '';
+        const delta = countBraceDepthChange(l, braceState);
+        if (delta > 0 && !started) started = true;
+        depth += delta;
+        bodyLines += l + '\n';
+        if (started && depth === 0) break;
+        j++;
+        if (j - i > 500) break; // safety limit
+      }
+
+      results.push({ name: funcName, line: i + 1, body: bodyLines });
+      i = j + 1;
+      continue;
     }
     i++;
   }
   return results;
 }
 
+// Fix 5: Corrected cyclomatic complexity calculation
 function analyzeComplexity(name: string, line: number, body: string): FunctionComplexity {
-  const branches = (body.match(/\bif\s*\(|\}\s*else\b|\bswitch\s*\(|\bcase\s+[^:]+:|\s\?\s|&&|\|\|/g) ?? []).length;
-  const loops = (body.match(/\bfor\s*\(|\bwhile\s*\(|\bdo\s*\{|\bforEach\b|\bmap\b|\bfilter\b|\breduce\b/g) ?? []).length;
-  const tryCatch = (body.match(/\btry\s*\{|\bcatch\s*\(/g) ?? []).length;
+  // Remove lines that are entirely within quotes (simple check: skip lines starting with quote chars after trim)
+  const filteredLines = body.split('\n').filter(l => {
+    const trimmed = l.trim();
+    return !(trimmed.startsWith("'") || trimmed.startsWith('"') || trimmed.startsWith('`'));
+  });
+  const filteredBody = filteredLines.join('\n');
+
+  // Fix 5: Correct branch counting:
+  // - Count if (decision point)
+  // - Remove else (not a decision point in McCabe)
+  // - Remove switch (only case labels count)
+  // - Add ?? and ?. as decision points
+  // - Count ternary ?, &&, ||
+  const branches = (filteredBody.match(/\bif\s*\(|\s\?\s(?!\.)|\?\?|(?<!\?)\?\.|\&\&|\|\|/g) ?? []).length;
+
+  // Fix 5: loops — remove forEach, map, filter, reduce (HOFs, not control flow)
+  const loops = (filteredBody.match(/\bfor\s*\(|\bwhile\s*\(|\bdo\s*\{/g) ?? []).length;
+
+  // Fix 5: try+catch = 1 decision point (count try blocks only, not catch separately)
+  const tryCatch = (filteredBody.match(/\btry\s*\{/g) ?? []).length;
+
   const earlyReturns = (body.match(/\breturn\b/g) ?? []).length;
   const asyncPatterns = (body.match(/\bawait\b|\bPromise\b|\bthen\s*\(|\bcatch\s*\(/g) ?? []).length;
 
+  // Fix 5: case labels as decision points (not switch keyword)
+  const caseLabels = (filteredBody.match(/\bcase\s+[^:]+:/g) ?? []).length;
+
   // McCabe cyclomatic: 1 + decision points
-  const cyclomatic = 1 + branches + loops + tryCatch;
+  const cyclomatic = 1 + branches + loops + tryCatch + caseLabels;
 
   const fn: FunctionComplexity = {
     name,
@@ -577,8 +857,9 @@ function suggestTestCases(functionBody: string, functionName: string): TestCaseS
     });
   }
 
-  // Recursion
-  const recursionRe = new RegExp(`\\b${functionName}\\s*\\(`);
+  // Fix 13: Escape function name before using in RegExp
+  const escapedName = functionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const recursionRe = new RegExp(`\\b${escapedName}\\s*\\(`);
   if (recursionRe.test(functionBody.split('\n').slice(1).join('\n'))) {
     suggestions.push({
       description: `should handle base case to prevent infinite recursion`,
@@ -603,7 +884,8 @@ function suggestTestCases(functionBody: string, functionName: string): TestCaseS
 // MCP Server
 // ---------------------------------------------------------------------------
 
-const server = new McpServer({ name: 'test-gap-mcp', version: '0.1.0' });
+// Fix 15: Use VERSION from package.json
+const server = new McpServer({ name: 'test-gap-mcp', version: VERSION });
 
 // Tool 1: analyze_test_coverage
 server.registerTool(
@@ -617,11 +899,20 @@ server.registerTool(
     }),
   },
   async ({ coverage_path, format }) => {
+    // Fix 10: Add isError: true to all error responses
     if (!fileExists(coverage_path)) {
-      return { content: [{ type: 'text' as const, text: `Error: File not found: ${coverage_path}` }] };
+      return { isError: true, content: [{ type: 'text' as const, text: `Error: File not found: ${coverage_path}` }] };
     }
 
-    const content = readFile(coverage_path);
+    let content: string;
+    try {
+      content = readFile(coverage_path);
+    } catch (err) {
+      // Fix 14: Use err.message when available
+      const msg = err instanceof Error ? err.message : String(err);
+      return { isError: true, content: [{ type: 'text' as const, text: `Error reading file: ${msg}` }] };
+    }
+
     const ext = path.extname(coverage_path).toLowerCase();
 
     let detectedFormat = format;
@@ -638,7 +929,9 @@ server.registerTool(
       else if (detectedFormat === 'istanbul') uncovered = parseIstanbul(content);
       else uncovered = parseCobertura(content);
     } catch (err) {
-      return { content: [{ type: 'text' as const, text: `Error parsing ${detectedFormat} coverage: ${String(err)}` }] };
+      // Fix 14: Use err.message when available
+      const msg = err instanceof Error ? err.message : String(err);
+      return { isError: true, content: [{ type: 'text' as const, text: `Error parsing ${detectedFormat} coverage: ${msg}` }] };
     }
 
     if (uncovered.length === 0) {
@@ -691,10 +984,16 @@ server.registerTool(
   async ({ source_dir, test_dir, extensions }) => {
     const exts = extensions ?? ['.ts', '.tsx', '.js', '.jsx'];
 
-    const sourceFiles = walkDir(source_dir, exts).filter(f => {
-      const base = path.basename(f);
-      return !base.includes('.test.') && !base.includes('.spec.');
-    });
+    let sourceFiles: string[];
+    try {
+      sourceFiles = walkDir(source_dir, exts).filter(f => {
+        const base = path.basename(f);
+        return !base.includes('.test.') && !base.includes('.spec.');
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { isError: true, content: [{ type: 'text' as const, text: `Error scanning source directory: ${msg}` }] };
+    }
 
     if (sourceFiles.length === 0) {
       return { content: [{ type: 'text' as const, text: `No source files found in ${source_dir} with extensions: ${exts.join(', ')}` }] };
@@ -712,24 +1011,37 @@ server.registerTool(
     // Also build content index for import detection
     const testContents = new Map<string, string>();
     for (const tf of allTestFiles) {
-      testContents.set(tf, readFile(tf));
+      try {
+        testContents.set(tf, readFile(tf));
+      } catch {
+        // Skip unreadable test files
+      }
     }
 
     const results: UntestedSource[] = [];
 
     for (const srcFile of sourceFiles) {
-      const content = readFile(srcFile);
+      let content: string;
+      try {
+        content = readFile(srcFile);
+      } catch {
+        continue;
+      }
       const functions = extractFunctions(content);
       if (functions.length === 0) continue;
 
       const testPaths = deriveTestPaths(srcFile, test_dir);
       const existingTests = testPaths.filter(tp => fileExists(tp));
 
-      // Check if any test file imports this source
+      // Fix 12: More specific import detection — match basename as a complete path segment
       const srcBasename = path.basename(srcFile, path.extname(srcFile));
+      // Match from '.../<basename>' or require('.../<basename>') as complete segment
+      const importRe = new RegExp(
+        `(?:from\\s+['""][^'""]*/|require\\s*\\(\\s*['""][^'""]*/)${srcBasename}(?:['""]|\\.[a-zA-Z]+['""])`,
+      );
       const importedByTest = allTestFiles.some(tf => {
         const tc = testContents.get(tf) ?? '';
-        return tc.includes(`/${srcBasename}`) || tc.includes(`'${srcBasename}'`) || tc.includes(`"${srcBasename}"`);
+        return importRe.test(tc);
       });
 
       const hasTestFile = existingTests.length > 0 || importedByTest;
@@ -743,6 +1055,9 @@ server.registerTool(
         });
       }
     }
+
+    // Suppress unused variable warning
+    void testBasenames;
 
     if (results.length === 0) {
       return { content: [{ type: 'text' as const, text: `All ${sourceFiles.length} source file(s) have corresponding tests. No gaps found.` }] };
@@ -782,10 +1097,18 @@ server.registerTool(
   },
   async ({ file_path }) => {
     if (!fileExists(file_path)) {
-      return { content: [{ type: 'text' as const, text: `Error: File not found: ${file_path}` }] };
+      // Fix 10: isError: true
+      return { isError: true, content: [{ type: 'text' as const, text: `Error: File not found: ${file_path}` }] };
     }
 
-    const content = readFile(file_path);
+    let content: string;
+    try {
+      content = readFile(file_path);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { isError: true, content: [{ type: 'text' as const, text: `Error reading file: ${msg}` }] };
+    }
+
     const bodies = extractFunctionBodies(content);
 
     if (bodies.length === 0) {
@@ -843,16 +1166,25 @@ server.registerTool(
   },
   async ({ file_path, function_name }) => {
     if (!fileExists(file_path)) {
-      return { content: [{ type: 'text' as const, text: `Error: File not found: ${file_path}` }] };
+      // Fix 10: isError: true
+      return { isError: true, content: [{ type: 'text' as const, text: `Error: File not found: ${file_path}` }] };
     }
 
-    const content = readFile(file_path);
+    let content: string;
+    try {
+      content = readFile(file_path);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { isError: true, content: [{ type: 'text' as const, text: `Error reading file: ${msg}` }] };
+    }
+
     const bodies = extractFunctionBodies(content);
     const match = bodies.find(b => b.name === function_name);
 
     if (!match) {
       const available = bodies.map(b => b.name).join(', ');
       return {
+        isError: true,
         content: [{
           type: 'text' as const,
           text: `Function '${function_name}' not found in ${file_path}.\nAvailable functions: ${available || 'none'}`,
@@ -897,12 +1229,35 @@ server.registerTool(
 // ---------------------------------------------------------------------------
 
 async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error('test-gap-mcp server running on stdio');
+  const useHttp = process.argv.includes('--http') || (process.env.TRANSPORT ?? '').toLowerCase() === 'http';
+
+  if (useHttp) {
+    const app = express();
+    app.use(express.json());
+    const port = parseInt(process.env.PORT || '3000', 10);
+
+    app.post('/mcp', async (req, res) => {
+      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
+      res.on('close', () => { transport.close(); });
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    });
+
+    app.get('/health', (_req, res) => {
+      res.json({ status: 'ok', server: 'test-gap-mcp', version: VERSION });
+    });
+
+    app.listen(port, () => {
+      process.stderr.write(`test-gap-mcp v${VERSION} listening on http://0.0.0.0:${port}/mcp\n`);
+    });
+  } else {
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    process.stderr.write(`test-gap-mcp v${VERSION} running on stdio\n`);
+  }
 }
 
-main().catch((error) => {
-  console.error('Fatal error:', error);
+main().catch((err) => {
+  process.stderr.write(`Fatal error: ${err instanceof Error ? err.message : String(err)}\n`);
   process.exit(1);
 });

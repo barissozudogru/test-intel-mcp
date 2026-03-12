@@ -1,24 +1,12 @@
-<div align="center">
-
 # test-gap-mcp
 
-**MCP server that identifies untested code and suggests test cases**
+MCP server that analyzes TypeScript and JavaScript projects to find test coverage gaps. Reads local files directly — no tokens, no external services, no authentication required.
 
-![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
-![Node](https://img.shields.io/badge/Node-%3E%3D18-green)
-![License](https://img.shields.io/badge/License-MIT-yellow)
-![MCP](https://img.shields.io/badge/Protocol-MCP-purple)
-![Zero Auth](https://img.shields.io/badge/Auth-Zero%20Required-brightgreen)
-
-</div>
+Compatible with: Claude Desktop | Claude Code | Cursor | Windsurf | VS Code | Cline | Continue | Zed | JetBrains | ChatGPT
 
 ---
 
-## What It Does
-
-`test-gap-mcp` is a Model Context Protocol server that analyzes your TypeScript and JavaScript projects to find test coverage gaps — without any external services, tokens, or authentication. It reads local files directly.
-
-Four tools are exposed:
+## Tools
 
 | Tool | Description |
 |---|---|
@@ -29,29 +17,128 @@ Four tools are exposed:
 
 ---
 
-## Setup for Claude Desktop
+## Setup
 
-Add the following to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+### Option A: stdio (local — recommended for most clients)
 
-```json
-{
-  "mcpServers": {
-    "test-gap-mcp": {
-      "command": "node",
-      "args": ["/path/to/test-gap-mcp/dist/index.js"]
-    }
-  }
-}
-```
+#### Claude Desktop
 
-Or if installed via npm:
+Config file: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
-    "test-gap-mcp": {
+    "test-gap": {
       "command": "npx",
-      "args": ["@barissozudogru/test-gap-mcp"]
+      "args": ["-y", "@barissozudogru/test-gap-mcp"]
+    }
+  }
+}
+```
+
+#### Claude Code
+
+```bash
+claude mcp add test-gap -- npx -y @barissozudogru/test-gap-mcp
+```
+
+#### Cursor
+
+Config file: `~/.cursor/mcp.json`
+
+```json
+{
+  "mcpServers": {
+    "test-gap": {
+      "command": "npx",
+      "args": ["-y", "@barissozudogru/test-gap-mcp"]
+    }
+  }
+}
+```
+
+#### Windsurf
+
+Config file: `~/.codeium/windsurf/mcp_config.json`
+
+```json
+{
+  "mcpServers": {
+    "test-gap": {
+      "command": "npx",
+      "args": ["-y", "@barissozudogru/test-gap-mcp"]
+    }
+  }
+}
+```
+
+#### VS Code + Copilot
+
+Config file: `.vscode/mcp.json`
+
+```json
+{
+  "servers": {
+    "test-gap": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@barissozudogru/test-gap-mcp"]
+    }
+  }
+}
+```
+
+#### Cline
+
+```json
+{
+  "mcpServers": {
+    "test-gap": {
+      "command": "npx",
+      "args": ["-y", "@barissozudogru/test-gap-mcp"]
+    }
+  }
+}
+```
+
+#### Continue.dev
+
+Config file: `~/.continue/config.yaml`
+
+```yaml
+mcpServers:
+  - name: test-gap
+    command: npx
+    args:
+      - -y
+      - "@barissozudogru/test-gap-mcp"
+```
+
+#### Zed
+
+Config file: `~/.config/zed/settings.json`
+
+```json
+{
+  "context_servers": {
+    "test-gap": {
+      "command": {
+        "path": "npx",
+        "args": ["-y", "@barissozudogru/test-gap-mcp"]
+      }
+    }
+  }
+}
+```
+
+#### JetBrains (IntelliJ, WebStorm, etc.)
+
+```json
+{
+  "mcpServers": {
+    "test-gap": {
+      "command": "npx",
+      "args": ["-y", "@barissozudogru/test-gap-mcp"]
     }
   }
 }
@@ -59,101 +146,93 @@ Or if installed via npm:
 
 ---
 
-## Tools
+### Option B: HTTP (remote clients)
 
-### analyze_test_coverage
+Start the server:
 
-Parse a coverage report and get a list of files with uncovered code.
+```bash
+npx @barissozudogru/test-gap-mcp --http
+# or
+PORT=3000 TRANSPORT=http npx @barissozudogru/test-gap-mcp
+```
+
+The server listens on `http://0.0.0.0:3000/mcp`. A health check is available at `/health`.
+
+#### Cursor (HTTP)
 
 ```json
 {
-  "coverage_path": "./coverage/lcov.info",
-  "format": "lcov"
+  "mcpServers": {
+    "test-gap": {
+      "url": "http://localhost:3000/mcp"
+    }
+  }
 }
 ```
 
-Supported formats: `lcov` (`.info`), `istanbul` (`.json`), `cobertura` (`.xml`). Format is auto-detected from file extension when omitted.
-
----
-
-### find_untested_functions
-
-Scan a source directory and identify functions that have no test file.
+#### VS Code + Copilot (HTTP)
 
 ```json
 {
-  "source_dir": "./src",
-  "test_dir": "./src/__tests__",
-  "extensions": [".ts", ".tsx"]
+  "servers": {
+    "test-gap": {
+      "type": "http",
+      "url": "http://localhost:3000/mcp"
+    }
+  }
 }
 ```
 
-Naming conventions checked: `foo.ts` -> `foo.test.ts`, `foo.spec.ts`, `__tests__/foo.test.ts`.
-
----
-
-### get_function_complexity
-
-Get cyclomatic complexity for every function in a file, sorted by priority.
+#### Windsurf (HTTP)
 
 ```json
 {
-  "file_path": "./src/utils/parser.ts"
+  "mcpServers": {
+    "test-gap": {
+      "serverUrl": "http://localhost:3000/mcp"
+    }
+  }
 }
 ```
 
-Priority levels: `critical` (>=15), `high` (>=8), `medium` (>=4), `low` (<4).
+#### Continue.dev (HTTP)
+
+```yaml
+mcpServers:
+  - name: test-gap
+    url: http://localhost:3000/mcp
+```
 
 ---
 
-### suggest_test_cases
+### Option C: Docker
 
-Generate test case suggestions for a specific function.
-
-```json
-{
-  "file_path": "./src/services/auth.ts",
-  "function_name": "validateToken"
-}
+```bash
+docker build -t test-gap-mcp .
+docker run -p 3000:3000 -v $(pwd):/project -w /project test-gap-mcp
 ```
 
-Categories returned: `happy-path`, `edge-case`, `error-handling`, `boundary`, `async`, `type-check`.
+Then configure any HTTP client to point at `http://localhost:3000/mcp`.
 
 ---
 
-## Usage Examples
+## Supported Coverage Formats
 
-**Find everything untested in your project:**
+| Format | Extension | Generator |
+|---|---|---|
+| lcov | `.info` | Jest, Vitest, nyc, Istanbul |
+| istanbul | `.json` | Jest, nyc, Istanbul |
+| cobertura | `.xml` | Jest, pytest-cov, JaCoCo |
 
-```
-Use find_untested_functions with source_dir="./src"
-```
-
-**Prioritize what to test first:**
-
-```
-Use get_function_complexity with file_path="./src/api/handler.ts"
-```
-
-**Get actionable test suggestions:**
-
-```
-Use suggest_test_cases with file_path="./src/api/handler.ts" and function_name="processRequest"
-```
-
-**Check your coverage report for gaps:**
-
-```
-Use analyze_test_coverage with coverage_path="./coverage/lcov.info"
-```
+Format is auto-detected from file extension when `format` is omitted.
 
 ---
 
 ## Requirements
 
 - Node.js >= 18
-- No external auth or network access required
-- Works entirely on local files
+- No authentication or network access required
+- All file analysis runs locally
 
 ---
 
