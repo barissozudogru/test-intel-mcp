@@ -548,6 +548,11 @@ function countBraceDepthChange(line: string, state: {
         i += 2;
         continue;
       }
+      if (ch === '}' && state.templateDepth > 0) {
+        state.templateDepth--;
+        i++;
+        continue;
+      }
       i++;
       continue;
     }
@@ -899,6 +904,11 @@ server.registerTool(
     }),
   },
   async ({ coverage_path, format }) => {
+    try {
+      safePath(coverage_path);
+    } catch (err) {
+      return { content: [{ type: 'text' as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
+    }
     // Fix 10: Add isError: true to all error responses
     if (!fileExists(coverage_path)) {
       return { isError: true, content: [{ type: 'text' as const, text: `Error: File not found: ${coverage_path}` }] };
@@ -1019,12 +1029,14 @@ server.registerTool(
     }
 
     const results: UntestedSource[] = [];
+    let skippedFiles = 0;
 
     for (const srcFile of sourceFiles) {
       let content: string;
       try {
         content = readFile(srcFile);
       } catch {
+        skippedFiles++;
         continue;
       }
       const functions = extractFunctions(content);
@@ -1059,8 +1071,16 @@ server.registerTool(
     // Suppress unused variable warning
     void testBasenames;
 
+    if (skippedFiles === sourceFiles.length) {
+      return { content: [{ type: 'text' as const, text: `Error: All ${sourceFiles.length} source file(s) are outside the workspace and could not be analyzed.` }], isError: true };
+    }
+
     if (results.length === 0) {
-      return { content: [{ type: 'text' as const, text: `All ${sourceFiles.length} source file(s) have corresponding tests. No gaps found.` }] };
+      const lines: string[] = [`All ${sourceFiles.length} source file(s) have corresponding tests. No gaps found.`];
+      if (skippedFiles > 0) {
+        lines.push(`\nWarning: ${skippedFiles} file(s) could not be read (outside workspace or inaccessible).`);
+      }
+      return { content: [{ type: 'text' as const, text: lines.join('') }] };
     }
 
     const lines: string[] = [
@@ -1081,6 +1101,10 @@ server.registerTool(
       lines.push('');
     }
 
+    if (skippedFiles > 0) {
+      lines.push(`\nWarning: ${skippedFiles} file(s) could not be read (outside workspace or inaccessible).`);
+    }
+
     return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
   }
 );
@@ -1096,6 +1120,11 @@ server.registerTool(
     }),
   },
   async ({ file_path }) => {
+    try {
+      safePath(file_path);
+    } catch (err) {
+      return { content: [{ type: 'text' as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
+    }
     if (!fileExists(file_path)) {
       // Fix 10: isError: true
       return { isError: true, content: [{ type: 'text' as const, text: `Error: File not found: ${file_path}` }] };
@@ -1165,6 +1194,11 @@ server.registerTool(
     }),
   },
   async ({ file_path, function_name }) => {
+    try {
+      safePath(file_path);
+    } catch (err) {
+      return { content: [{ type: 'text' as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
+    }
     if (!fileExists(file_path)) {
       // Fix 10: isError: true
       return { isError: true, content: [{ type: 'text' as const, text: `Error: File not found: ${file_path}` }] };

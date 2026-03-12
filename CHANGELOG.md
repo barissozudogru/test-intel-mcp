@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2026-03-12
+
+### Fixed
+
+- Template literal brace counting now correctly decrements depth on closing braces (was corrupting function body extraction)
+- find_untested_functions no longer reports false "all files have tests" when files are outside the workspace
+- Sandbox violations now return "Access denied" instead of misleading "File not found"
+
 ## [0.4.0] - 2026-03-12
 
 ### Changed
