@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="888" height="200" viewBox="0 0 888 200">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0C1222"/>
+      <stop offset="50%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#164E63"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#06B6D4"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="888" height="200" rx="12" fill="url(#bg-grad)"/>
+
+  <!-- Dot grid pattern -->
+  <g opacity="0.06">
+    <pattern id="dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="12" r="1" fill="white"/>
+    </pattern>
+    <rect width="888" height="200" fill="url(#dots)"/>
+  </g>
+
+  <!-- Accent line at top -->
+  <rect x="0" y="0" width="888" height="3" rx="0" fill="url(#accent)" opacity="0.8"/>
+
+  <!-- Logo mark (small hexagon) -->
+  <g transform="translate(48, 60)">
+    <polygon points="40,40 22.4,9.7 57.6,9.7" fill="#22D3EE" opacity="0.95"/>
+    <polygon points="40,40 57.6,9.7 75.2,40" fill="#06B6D4" opacity="0.95"/>
+    <polygon points="40,40 75.2,40 57.6,70.3" fill="#0891B2" opacity="0.95"/>
+    <polygon points="40,40 57.6,70.3 22.4,70.3" fill="#0E7490" opacity="0.90"/>
+    <polygon points="40,40 22.4,70.3 4.8,40" fill="#0891B2" opacity="0.92"/>
+    <polygon points="40,40 4.8,40 22.4,9.7" fill="#22D3EE" opacity="0.88"/>
+    <polygon points="75.2,40 57.6,70.3 22.4,70.3 4.8,40 22.4,9.7 57.6,9.7"
+             fill="none" stroke="#164E63" stroke-width="0.8" opacity="0.3"/>
+    <!-- Crosshair glyph -->
+    <circle cx="40" cy="40" r="11.5" fill="none" stroke="white" stroke-width="1.8" opacity="0.95"/>
+    <circle cx="40" cy="40" r="2.5" fill="white" opacity="0.95"/>
+    <line x1="40" y1="24" x2="40" y2="32" stroke="white" stroke-width="1.8" opacity="0.95"/>
+    <line x1="40" y1="48" x2="40" y2="56" stroke="white" stroke-width="1.8" opacity="0.95"/>
+    <line x1="24" y1="40" x2="32" y2="40" stroke="white" stroke-width="1.8" opacity="0.95"/>
+    <line x1="48" y1="40" x2="56" y2="40" stroke="white" stroke-width="1.8" opacity="0.95"/>
+  </g>
+
+  <!-- Title -->
+  <text x="148" y="92" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-size="32" font-weight="700" fill="white" letter-spacing="-0.5">
+    test-intel-mcp
+  </text>
+
+  <!-- Tagline -->
+  <text x="148" y="120" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-size="14" fill="white" opacity="0.65">
+    Test coverage intelligence. Coverage analysis, untested functions, complexity scoring.
+  </text>
+
+  <!-- Feature pills -->
+  <g transform="translate(148, 138)">
+    <rect x="0" y="0" width="92" height="24" rx="12" fill="#06B6D4" opacity="0.2"/>
+    <text x="46" y="16" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+          font-size="11" fill="#67E8F9" text-anchor="middle">MCP Server</text>
+
+    <rect x="102" y="0" width="86" height="24" rx="12" fill="#06B6D4" opacity="0.2"/>
+    <text x="145" y="16" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+          font-size="11" fill="#67E8F9" text-anchor="middle">TypeScript</text>
+
+    <rect x="198" y="0" width="88" height="24" rx="12" fill="#06B6D4" opacity="0.2"/>
+    <text x="242" y="16" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+          font-size="11" fill="#67E8F9" text-anchor="middle">Coverage</text>
+
+    <rect x="296" y="0" width="94" height="24" rx="12" fill="#06B6D4" opacity="0.2"/>
+    <text x="343" y="16" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+          font-size="11" fill="#67E8F9" text-anchor="middle">Complexity</text>
+
+    <rect x="400" y="0" width="82" height="24" rx="12" fill="#06B6D4" opacity="0.2"/>
+    <text x="441" y="16" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+          font-size="11" fill="#67E8F9" text-anchor="middle">Analysis</text>
+  </g>
+</svg>

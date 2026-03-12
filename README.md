@@ -1,12 +1,14 @@
-# test-intel-mcp
+<p align="center">
+  <img src="./assets/banner-test-intel.svg" alt="test-intel-mcp" width="888" />
+</p>
 
 <p align="center">
-  <img alt="version" src="https://img.shields.io/badge/npm-0.4.0-cb3837?style=flat-square&logo=npm&logoColor=white" />
+  <img alt="version" src="https://img.shields.io/badge/npm-0.4.0-06B6D4?style=flat-square&logo=npm&logoColor=white" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white" />
   <img alt="Node" src="https://img.shields.io/badge/Node-%3E%3D18-339933?style=flat-square&logo=node.js&logoColor=white" />
-  <img alt="License" src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" />
-  <img alt="MCP Server" src="https://img.shields.io/badge/MCP-Server-8A2BE2?style=flat-square" />
-  <img alt="No Auth" src="https://img.shields.io/badge/No_Auth_Required-brightgreen?style=flat-square" />
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-06B6D4?style=flat-square" />
+  <img alt="MCP Server" src="https://img.shields.io/badge/MCP-Server-0F172A?style=flat-square" />
+  <img alt="No Auth" src="https://img.shields.io/badge/No_Auth_Required-06B6D4?style=flat-square" />
 </p>
 
 Test coverage intelligence MCP server for TypeScript and JavaScript projects. Analyzes coverage reports, detects untested functions, and scores cyclomatic complexity — all locally, with no tokens, no external services, and no authentication required.

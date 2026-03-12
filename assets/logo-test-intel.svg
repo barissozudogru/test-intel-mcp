@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Facet 1: top -->
+  <polygon points="64,64 36,15.5 92,15.5" fill="#22D3EE" opacity="0.95"/>
+  <!-- Facet 2: top-right -->
+  <polygon points="64,64 92,15.5 120,64" fill="#06B6D4" opacity="0.95"/>
+  <!-- Facet 3: bottom-right -->
+  <polygon points="64,64 120,64 92,112.5" fill="#0891B2" opacity="0.95"/>
+  <!-- Facet 4: bottom -->
+  <polygon points="64,64 92,112.5 36,112.5" fill="#0E7490" opacity="0.90"/>
+  <!-- Facet 5: bottom-left -->
+  <polygon points="64,64 36,112.5 8,64" fill="#0891B2" opacity="0.92"/>
+  <!-- Facet 6: top-left -->
+  <polygon points="64,64 8,64 36,15.5" fill="#22D3EE" opacity="0.88"/>
+  <!-- Facet edge lines -->
+  <polygon points="120,64 92,112.5 36,112.5 8,64 36,15.5 92,15.5"
+           fill="none" stroke="#164E63" stroke-width="1" opacity="0.2"/>
+  <line x1="64" y1="64" x2="120" y2="64" stroke="#164E63" stroke-width="0.5" opacity="0.15"/>
+  <line x1="64" y1="64" x2="92" y2="112.5" stroke="#164E63" stroke-width="0.5" opacity="0.15"/>
+  <line x1="64" y1="64" x2="36" y2="112.5" stroke="#164E63" stroke-width="0.5" opacity="0.15"/>
+  <line x1="64" y1="64" x2="8" y2="64" stroke="#164E63" stroke-width="0.5" opacity="0.15"/>
+  <line x1="64" y1="64" x2="36" y2="15.5" stroke="#164E63" stroke-width="0.5" opacity="0.15"/>
+  <line x1="64" y1="64" x2="92" y2="15.5" stroke="#164E63" stroke-width="0.5" opacity="0.15"/>
+  <!-- Crosshair scope -->
+  <circle cx="64" cy="64" r="18" fill="none" stroke="white" stroke-width="2.5" opacity="0.95"/>
+  <circle cx="64" cy="64" r="4" fill="white" opacity="0.95"/>
+  <line x1="64" y1="40" x2="64" y2="52" stroke="white" stroke-width="2.5" opacity="0.95"/>
+  <line x1="64" y1="76" x2="64" y2="88" stroke="white" stroke-width="2.5" opacity="0.95"/>
+  <line x1="40" y1="64" x2="52" y2="64" stroke="white" stroke-width="2.5" opacity="0.95"/>
+  <line x1="76" y1="64" x2="88" y2="64" stroke="white" stroke-width="2.5" opacity="0.95"/>
+</svg>
