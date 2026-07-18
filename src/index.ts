@@ -105,6 +105,8 @@ function parseLcov(content: string): UncoveredItem[] {
     lineHits: Map<number, number>;
     // For merging: function hit counts keyed by name
     funcHits: Map<string, number>;
+    // Declared function names, deduped so repeated SF: records don't inflate the total
+    funcNames: Set<string>;
   }>();
 
   let currentFile: string | null = null;
@@ -123,6 +125,7 @@ function parseLcov(content: string): UncoveredItem[] {
         hitBranches: 0,
         lineHits: new Map(),
         funcHits: new Map(),
+        funcNames: new Set(),
       });
     }
     return fileData.get(fileName)!;
@@ -135,9 +138,14 @@ function parseLcov(content: string): UncoveredItem[] {
       // Initialize entry if first time, otherwise reuse existing for merging
       getOrCreate(currentFile);
     } else if (line.startsWith('FN:') && currentFile) {
-      // FN:<line>,<name> — count total functions
+      // FN:<line>,<name>. Count each function name once so merged duplicate
+      // SF: records don't double-count it and report too-low function coverage.
       const d = getOrCreate(currentFile);
-      d.totalFuncs++;
+      const fnName = line.slice(3).split(',')[1] ?? 'unknown';
+      if (!d.funcNames.has(fnName)) {
+        d.funcNames.add(fnName);
+        d.totalFuncs++;
+      }
     } else if (line.startsWith('FNDA:') && currentFile) {
       // FNDA:<count>,<name>
       const [countStr, name] = line.slice(5).split(',');
