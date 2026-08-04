@@ -1,6 +1,6 @@
 ![test-intel-mcp](./assets/banner-test-intel.svg)
 
-Test coverage intelligence MCP server for TypeScript and JavaScript projects. Analyzes coverage reports, detects untested functions, and scores cyclomatic complexity — all locally, with no tokens, no external services, and no authentication required.
+Test coverage intelligence MCP server for TypeScript and JavaScript projects. Analyzes coverage reports, detects untested functions, and scores cyclomatic complexity locally, with no external services and no authentication required.
 
 Compatible with: Claude Desktop | Claude Code | Cursor | Windsurf | VS Code | Cline | Continue | Zed | JetBrains | ChatGPT
 
@@ -19,7 +19,7 @@ Compatible with: Claude Desktop | Claude Code | Cursor | Windsurf | VS Code | Cl
 
 ## Setup
 
-### Option A: stdio (local — recommended for most clients)
+### Option A: stdio (local)
 
 #### Claude Desktop
 
