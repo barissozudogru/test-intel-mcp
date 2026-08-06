@@ -1055,9 +1055,10 @@ server.registerTool(
 
       // Fix 12: More specific import detection — match basename as a complete path segment
       const srcBasename = path.basename(srcFile, path.extname(srcFile));
+      const escapedBasename = srcBasename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       // Match from '.../<basename>' or require('.../<basename>') as complete segment
       const importRe = new RegExp(
-        `(?:from\\s+['""][^'""]*/|require\\s*\\(\\s*['""][^'""]*/)${srcBasename}(?:['""]|\\.[a-zA-Z]+['""])`,
+        `(?:from\\s+['""][^'""]*/|require\\s*\\(\\s*['""][^'""]*/)${escapedBasename}(?:['""]|\\.[a-zA-Z]+['""])`,
       );
       const importedByTest = allTestFiles.some(tf => {
         const tc = testContents.get(tf) ?? '';
