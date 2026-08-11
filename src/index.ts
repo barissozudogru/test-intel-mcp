@@ -210,13 +210,9 @@ function parseLcov(content: string): UncoveredItem[] {
       else uncoveredFunctions.push(fnName);
     }
 
-    const tl = d.totalLines || 1;
-    const tf = d.totalFuncs || 1;
-    const tb = d.totalBranches || 1;
-
-    const lineCoverage = Math.round((hitLines / tl) * 100);
-    const functionCoverage = Math.round((hitFuncs / tf) * 100);
-    const branchCoverage = Math.round(((d.hitBranches) / tb) * 100);
+    const lineCoverage = d.totalLines > 0 ? Math.round((hitLines / d.totalLines) * 100) : 100;
+    const functionCoverage = d.totalFuncs > 0 ? Math.round((hitFuncs / d.totalFuncs) * 100) : 100;
+    const branchCoverage = d.totalBranches > 0 ? Math.round((d.hitBranches / d.totalBranches) * 100) : 100;
 
     if (uncoveredLines.length > 0 || uncoveredFunctions.length > 0 || d.uncoveredBranches.length > 0) {
       files.push({
