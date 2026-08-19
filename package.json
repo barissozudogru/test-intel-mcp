@@ -47,7 +47,8 @@
     "zod": "^4.3.6"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
