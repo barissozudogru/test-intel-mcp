@@ -89,7 +89,7 @@ interface UncoveredItem {
   branchCoverage: number;
 }
 
-// Fix 11: LCOV duplicate file records — merge instead of overwrite
+// Fix 11: LCOV duplicate file records - merge instead of overwrite
 function parseLcov(content: string): UncoveredItem[] {
   // Accumulated per-file data (supports duplicate SF: records)
   const fileData = new Map<string, {
@@ -431,7 +431,7 @@ function extractFunctions(content: string): FunctionRef[] {
       if (!line.includes('*/')) {
         insideBlockComment = true;
       }
-      // If /* and */ are on the same line, it's an inline comment — don't skip
+      // If /* and */ are on the same line, it's an inline comment - don't skip
     }
 
     // Skip line comment lines
@@ -547,7 +547,7 @@ function countBraceDepthChange(line: string, state: {
       continue;
     }
 
-    // Normal code — check for string/comment starts
+    // Normal code - check for string/comment starts
     if (ch === '/' && next === '/') {
       state.insideLineComment = true;
       break;
@@ -566,7 +566,7 @@ function countBraceDepthChange(line: string, state: {
       if (ch === '{') delta++;
       if (ch === '}') delta--;
     } else {
-      // Inside template ${...} — track depth
+      // Inside template ${...} - track depth
       if (ch === '{') state.templateDepth++;
       if (ch === '}') {
         state.templateDepth--;
@@ -617,7 +617,7 @@ function extractFunctionBodies(content: string): Array<{ name: string; line: num
         }
 
         if (!hasBrace) {
-          // Fix 6: Arrow function without braces — capture until semicolon, comma, or closing paren
+          // Fix 6: Arrow function without braces - capture until semicolon, comma, or closing paren
           let bodyLines = '';
           let j = i;
           while (j < lines.length) {
@@ -685,7 +685,7 @@ function analyzeComplexity(name: string, line: number, body: string): FunctionCo
   // - Count ternary ?, &&, ||
   const branches = (filteredBody.match(/\bif\s*\(|\s\?\s(?!\.)|\?\?|(?<!\?)\?\.|\&\&|\|\|/g) ?? []).length;
 
-  // Fix 5: loops — remove forEach, map, filter, reduce (HOFs, not control flow)
+  // Fix 5: loops - remove forEach, map, filter, reduce (HOFs, not control flow)
   const loops = (filteredBody.match(/\bfor\s*\(|\bwhile\s*\(|\bdo\s*\{/g) ?? []).length;
 
   // Fix 5: try+catch = 1 decision point (count try blocks only, not catch separately)
@@ -805,12 +805,12 @@ function suggestTestCases(functionBody: string, functionName: string): TestCaseS
   if (/\basync\b|\bawait\b/.test(functionBody)) {
     suggestions.push({
       description: `should resolve with expected value on success`,
-      rationale: 'Async function — resolved promise path must be verified.',
+      rationale: 'Async function - resolved promise path must be verified.',
       category: 'async',
     });
     suggestions.push({
       description: `should reject or throw when the async operation fails`,
-      rationale: 'Async function — rejected/thrown path must be covered to avoid unhandled rejections.',
+      rationale: 'Async function - rejected/thrown path must be covered to avoid unhandled rejections.',
       category: 'async',
     });
   }
@@ -858,7 +858,7 @@ function suggestTestCases(functionBody: string, functionName: string): TestCaseS
   if (recursionRe.test(functionBody.split('\n').slice(1).join('\n'))) {
     suggestions.push({
       description: `should handle base case to prevent infinite recursion`,
-      rationale: 'Function calls itself — the termination/base case must be exercised.',
+      rationale: 'Function calls itself - the termination/base case must be exercised.',
       category: 'edge-case',
     });
   }
@@ -867,7 +867,7 @@ function suggestTestCases(functionBody: string, functionName: string): TestCaseS
   if (/typeof\s+\w+|instanceof\s+\w+/.test(functionBody)) {
     suggestions.push({
       description: `should handle different runtime types correctly`,
-      rationale: 'typeof/instanceof checks indicate multiple accepted types — test each branch.',
+      rationale: 'typeof/instanceof checks indicate multiple accepted types - test each branch.',
       category: 'type-check',
     });
   }
@@ -1035,7 +1035,7 @@ server.registerTool(
       const testPaths = deriveTestPaths(srcFile, test_dir);
       const existingTests = testPaths.filter(tp => fileExists(tp));
 
-      // Fix 12: More specific import detection — match basename as a complete path segment
+      // Fix 12: More specific import detection - match basename as a complete path segment
       const srcBasename = path.basename(srcFile, path.extname(srcFile));
       const escapedBasename = srcBasename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       // Match from '.../<basename>' or require('.../<basename>') as complete segment
