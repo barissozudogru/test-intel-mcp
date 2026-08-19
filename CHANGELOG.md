@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2026-08-19
+
+### Fixed
+- Expected test file candidates are deduplicated, so `__tests__` locations are no longer pushed out of the report.
+
+### Added
+- Test suite.
+
 ## [0.5.0] - 2026-03-12
 
 ### Fixed
