@@ -7,6 +7,7 @@ import express from 'express';
 import { z } from 'zod';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { deriveTestPaths } from './paths.js';
 import { createRequire } from 'node:module';
 
 // Fix 15: Read version from package.json instead of hardcoding
@@ -455,21 +456,6 @@ function extractFunctions(content: string): FunctionRef[] {
   return found;
 }
 
-function deriveTestPaths(sourceFile: string, testDir: string | undefined): string[] {
-  const basename = path.basename(sourceFile, path.extname(sourceFile));
-  const ext = path.extname(sourceFile);
-  const dir = testDir ? path.resolve(testDir) : path.dirname(path.resolve(sourceFile));
-  const sourceDir = path.dirname(path.resolve(sourceFile));
-
-  const candidates: string[] = [];
-  for (const testExt of ['.test', '.spec']) {
-    candidates.push(path.join(dir, `${basename}${testExt}${ext}`));
-    candidates.push(path.join(sourceDir, `${basename}${testExt}${ext}`));
-    candidates.push(path.join(sourceDir, '__tests__', `${basename}${testExt}${ext}`));
-    candidates.push(path.join(dir, '__tests__', `${basename}${testExt}${ext}`));
-  }
-  return candidates;
-}
 
 // ---------------------------------------------------------------------------
 // Tool 3: get_function_complexity
@@ -1100,7 +1086,7 @@ server.registerTool(
         lines.push(`    - ${fn.name} (line ${fn.line}, ${fn.kind})`);
       }
       lines.push(`  Expected test file(s):`);
-      for (const tp of r.testFilePaths.slice(0, 3)) {
+      for (const tp of r.testFilePaths) {
         lines.push(`    ${tp}`);
       }
       lines.push('');
