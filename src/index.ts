@@ -8,6 +8,7 @@ import { z } from 'zod';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { deriveTestPaths } from './paths.js';
+import { createSafePath } from './safe-path.js';
 import { createRequire } from 'node:module';
 
 // Fix 15: Read version from package.json instead of hardcoding
@@ -19,15 +20,8 @@ const { version: VERSION } = require('../package.json') as { version: string };
 // ---------------------------------------------------------------------------
 
 // Fix 3: Filesystem sandboxing
-const PROJECT_ROOT = process.cwd();
-
-function safePath(filePath: string): string {
-  const resolved = path.resolve(filePath);
-  if (!resolved.startsWith(PROJECT_ROOT + path.sep) && resolved !== PROJECT_ROOT) {
-    throw new Error(`Access denied: path '${filePath}' is outside the allowed root '${PROJECT_ROOT}'`);
-  }
-  return resolved;
-}
+const PROJECT_ROOT = fs.realpathSync(process.cwd());
+const safePath = createSafePath(PROJECT_ROOT);
 
 function readFile(filePath: string): string {
   return fs.readFileSync(safePath(filePath), 'utf-8');
@@ -49,7 +43,7 @@ function walkDir(dir: string, extensions: string[], visited = new Set<string>(),
 
   let resolved: string;
   try {
-    resolved = fs.realpathSync(path.resolve(dir));
+    resolved = safePath(dir);
   } catch {
     return results;
   }

@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2026-08-26
+
+### Added
+
+- `test-intel-report` command for turning an existing coverage artifact into a plain text gap report.
+- Reusable composite GitHub Action that writes the report to the workflow summary.
+- Canonical path validation that rejects symbolic links escaping the project root.
+- Continuous integration for pushes and pull requests.
+- Petri Labs discovery page, download badges, and a repository social preview.
+- MCP Registry metadata and automated OIDC publication with the focused tool page and current package version.
+
+### Changed
+
+- The package homepage now points to the focused Petri Labs tool page while source and issues remain on GitHub.
+
 ## [0.6.0] - 2026-08-19
 
 ### Fixed

@@ -1,17 +1,19 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.barissozudogru/test-intel",
+  "title": "Test Intel",
   "description": "Coverage analysis, untested function detection and complexity scoring for TS and JS.",
+  "websiteUrl": "https://petri-labs.org/tools/test-intel-mcp/",
   "repository": {
     "url": "https://github.com/barissozudogru/test-intel-mcp",
     "source": "github"
   },
-  "version": "0.6.1",
+  "version": "0.7.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@barissozudogru/test-intel-mcp",
-      "version": "0.6.1",
+      "version": "0.7.0",
       "transport": {
         "type": "stdio"
       }

@@ -1,12 +1,13 @@
 {
   "name": "@barissozudogru/test-intel-mcp",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "mcpName": "io.github.barissozudogru/test-intel",
   "description": "Test coverage intelligence MCP server - coverage analysis, untested function detection, and complexity scoring",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "test-intel-mcp": "dist/index.js"
+    "test-intel-mcp": "dist/index.js",
+    "test-intel-report": "dist/report.js"
   },
   "scripts": {
     "build": "tsc",
@@ -35,7 +36,7 @@
     "type": "git",
     "url": "https://github.com/barissozudogru/test-intel-mcp.git"
   },
-  "homepage": "https://github.com/barissozudogru/test-intel-mcp#readme",
+  "homepage": "https://petri-labs.org/tools/test-intel-mcp/",
   "bugs": {
     "url": "https://github.com/barissozudogru/test-intel-mcp/issues"
   },
@@ -43,9 +44,9 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "express": "^5.2.1",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "publishConfig": {
     "access": "public",

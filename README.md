@@ -1,48 +1,128 @@
-![test-intel-mcp](./assets/banner-test-intel.svg)
+<p align="center">
+  <img src="./assets/banner-test-intel.svg" alt="test-intel-mcp" width="888" />
+</p>
 
-Test coverage intelligence MCP server for TypeScript and JavaScript projects. Analyzes coverage reports, detects untested functions, and scores cyclomatic complexity locally, with no external services and no authentication required.
+<p align="center">
+  <a href="https://www.npmjs.com/package/@barissozudogru/test-intel-mcp"><img alt="npm version" src="https://img.shields.io/npm/v/@barissozudogru/test-intel-mcp?style=flat-square&color=06B6D4"></a>
+  <a href="https://www.npmjs.com/package/@barissozudogru/test-intel-mcp"><img alt="npm downloads" src="https://img.shields.io/npm/dm/@barissozudogru/test-intel-mcp?style=flat-square&color=06B6D4"></a>
+  <a href="https://github.com/barissozudogru/test-intel-mcp/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/barissozudogru/test-intel-mcp/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://registry.modelcontextprotocol.io/v0.1/servers/io.github.barissozudogru%2Ftest-intel/versions/latest"><img alt="MCP Registry" src="https://img.shields.io/badge/MCP_Registry-listed-0F172A?style=flat-square"></a>
+  <a href="./LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/License-MIT-06B6D4?style=flat-square"></a>
+</p>
 
----
+# test-intel-mcp
+
+Turn JavaScript and TypeScript coverage artifacts into practical test priorities. The server reads local coverage and source files, identifies gaps, scores function complexity, and suggests focused test cases without sending code to an external service.
+
+[Tool page](https://petri-labs.org/tools/test-intel-mcp/) · [npm](https://www.npmjs.com/package/@barissozudogru/test-intel-mcp) · Listed in the official [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.barissozudogru%2Ftest-intel/versions/latest)
+
+## Start in one minute
+
+Add one local server entry to any stdio-compatible MCP client:
+
+```json
+{
+  "mcpServers": {
+    "test-intel": {
+      "command": "npx",
+      "args": ["-y", "@barissozudogru/test-intel-mcp"]
+    }
+  }
+}
+```
+
+Then ask the client to inspect an existing coverage file:
+
+```text
+Use test-intel to analyze coverage/lcov.info, identify the highest-impact gaps,
+and suggest tests for the most complex uncovered function.
+```
+
+No account, API key, or hosted service is required. File access is restricted to the directory where the server starts.
+
+## Proof on this repository
+
+Running the complexity tool against the real `src/paths.ts` file produces:
+
+```text
+Function complexity analysis for: src/paths.ts
+Total functions analyzed: 1
+
+Priority | Function        | Line | Cyclomatic | Branches | Loops
+---------|-----------------|------|------------|----------|------
+low      | deriveTestPaths | 11   | 3          | 1        | 1
+
+Summary: 0 critical, 0 high, 0 medium, 1 low priority
+```
+
+The same server reads lcov, Istanbul JSON, and Cobertura files to surface uncovered functions, lines, and branches.
+
+If this saves you time, consider [starring the repository](https://github.com/barissozudogru/test-intel-mcp). It helps other developers find it.
 
 ## Tools
 
-| Tool | Description |
+| Tool | What it answers |
 |---|---|
-| `analyze_test_coverage` | Parse lcov, istanbul JSON, or cobertura XML reports and surface uncovered files, functions, lines, and branches |
-| `find_untested_functions` | Scan a source directory for functions with no corresponding test file |
-| `get_function_complexity` | Compute cyclomatic complexity per function to prioritize what to test first |
-| `suggest_test_cases` | Analyze a specific function and generate categorized test case suggestions |
+| `analyze_test_coverage` | Which files, functions, lines, and branches remain uncovered? |
+| `find_untested_functions` | Which source functions have no corresponding test file? |
+| `get_function_complexity` | Which functions deserve testing attention first? |
+| `suggest_test_cases` | Which happy path, boundary, error, async, and type cases should be reviewed? |
 
----
+Supported coverage formats:
 
-## Setup
+| Format | Common producers |
+|---|---|
+| lcov | Jest, Vitest, nyc, Istanbul |
+| Istanbul JSON | Jest, nyc, Istanbul |
+| Cobertura XML | Jest, pytest-cov, JaCoCo |
 
-### Option A: stdio (local)
+Heuristic source-to-test matching and complexity scores are prioritization signals. Native coverage data and human review remain the source of truth.
 
-#### Claude Desktop
+## Coverage report command
 
-Config file: `~/Library/Application Support/Claude/claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "test-intel": {
-      "command": "npx",
-      "args": ["-y", "@barissozudogru/test-intel-mcp"]
-    }
-  }
-}
-```
-
-#### Claude Code
+The package also includes a non-MCP command for CI and terminal use:
 
 ```bash
-claude mcp add test-intel -- npx -y @barissozudogru/test-intel-mcp
+npx --yes --package @barissozudogru/test-intel-mcp test-intel-report coverage/lcov.info
 ```
 
-#### Cursor
+An explicit format can be supplied when the filename is ambiguous:
 
-Config file: `~/.cursor/mcp.json`
+```bash
+test-intel-report coverage/result.xml cobertura
+```
+
+## GitHub Action
+
+Generate coverage with the project's own test runner, then pass the resulting artifact to the action:
+
+```yaml
+name: Test priorities
+
+on: [pull_request]
+
+jobs:
+  test-intel:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests with coverage
+        run: npm ci && npm test -- --coverage
+      - uses: barissozudogru/test-intel-mcp@v0.7.0
+        with:
+          coverage-path: coverage/lcov.info
+```
+
+The report is written to the workflow summary. The action analyzes an artifact that already exists and does not upload source or coverage data.
+
+## Client setup
+
+<details>
+<summary>Claude Desktop, Cursor, Windsurf, Cline, and similar clients</summary>
+
+Use the stdio configuration from the quickstart. Config file locations differ by client, but the server entry is the same:
 
 ```json
 {
@@ -55,24 +135,12 @@ Config file: `~/.cursor/mcp.json`
 }
 ```
 
-#### Windsurf
+</details>
 
-Config file: `~/.codeium/windsurf/mcp_config.json`
+<details>
+<summary>VS Code with Copilot</summary>
 
-```json
-{
-  "mcpServers": {
-    "test-intel": {
-      "command": "npx",
-      "args": ["-y", "@barissozudogru/test-intel-mcp"]
-    }
-  }
-}
-```
-
-#### VS Code + Copilot
-
-Config file: `.vscode/mcp.json`
+Create `.vscode/mcp.json`:
 
 ```json
 {
@@ -86,154 +154,53 @@ Config file: `.vscode/mcp.json`
 }
 ```
 
-#### Cline
+</details>
 
-```json
-{
-  "mcpServers": {
-    "test-intel": {
-      "command": "npx",
-      "args": ["-y", "@barissozudogru/test-intel-mcp"]
-    }
-  }
-}
-```
+<details>
+<summary>Streamable HTTP</summary>
 
-#### Continue.dev
-
-Config file: `~/.continue/config.yaml`
-
-```yaml
-mcpServers:
-  - name: test-intel
-    command: npx
-    args:
-      - -y
-      - "@barissozudogru/test-intel-mcp"
-```
-
-#### Zed
-
-Config file: `~/.config/zed/settings.json`
-
-```json
-{
-  "context_servers": {
-    "test-intel": {
-      "command": {
-        "path": "npx",
-        "args": ["-y", "@barissozudogru/test-intel-mcp"]
-      }
-    }
-  }
-}
-```
-
-#### JetBrains (IntelliJ, WebStorm, etc.)
-
-```json
-{
-  "mcpServers": {
-    "test-intel": {
-      "command": "npx",
-      "args": ["-y", "@barissozudogru/test-intel-mcp"]
-    }
-  }
-}
-```
-
----
-
-### Option B: HTTP (remote clients)
-
-Start the server:
+Start the local endpoint:
 
 ```bash
 npx @barissozudogru/test-intel-mcp --http
-# or
-PORT=3000 TRANSPORT=http npx @barissozudogru/test-intel-mcp
 ```
 
-The server listens on `http://0.0.0.0:3000/mcp`. A health check is available at `/health`.
+The MCP endpoint is `http://localhost:3000/mcp` and the health endpoint is `http://localhost:3000/health`. Set `PORT` to use another port.
 
-#### Cursor (HTTP)
+</details>
 
-```json
-{
-  "mcpServers": {
-    "test-intel": {
-      "url": "http://localhost:3000/mcp"
-    }
-  }
-}
-```
-
-#### VS Code + Copilot (HTTP)
-
-```json
-{
-  "servers": {
-    "test-intel": {
-      "type": "http",
-      "url": "http://localhost:3000/mcp"
-    }
-  }
-}
-```
-
-#### Windsurf (HTTP)
-
-```json
-{
-  "mcpServers": {
-    "test-intel": {
-      "serverUrl": "http://localhost:3000/mcp"
-    }
-  }
-}
-```
-
-#### Continue.dev (HTTP)
-
-```yaml
-mcpServers:
-  - name: test-intel
-    url: http://localhost:3000/mcp
-```
-
----
-
-### Option C: Docker
+<details>
+<summary>Docker</summary>
 
 ```bash
 docker build -t test-intel-mcp .
-docker run -p 3000:3000 -v $(pwd):/project -w /project test-intel-mcp
+docker run -p 3000:3000 -v "$(pwd):/project" -w /project test-intel-mcp
 ```
 
-Then configure any HTTP client to point at `http://localhost:3000/mcp`.
+Connect an HTTP client to `http://localhost:3000/mcp`.
 
----
+</details>
 
-## Supported Coverage Formats
+## Local development
 
-| Format | Extension | Generator |
-|---|---|---|
-| lcov | `.info` | Jest, Vitest, nyc, Istanbul |
-| istanbul | `.json` | Jest, nyc, Istanbul |
-| cobertura | `.xml` | Jest, pytest-cov, JaCoCo |
+```bash
+npm install
+npm test
+npm run build
+node dist/index.js
+```
 
-Format is auto-detected from file extension when `format` is omitted.
+Requirements: Node.js 18 or newer.
 
----
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development workflow.
 
-## Requirements
+## Security and limits
 
-- Node.js >= 18
-- No authentication or network access required
-- All file analysis runs locally
-
----
+- Analysis runs locally and does not require network access.
+- Paths outside the server's starting directory are rejected.
+- Function discovery, source-to-test matching, and complexity scoring are heuristic.
+- A missing matching test filename does not prove a function is behaviorally untested.
 
 ## License
 
-MIT
+[MIT](./LICENSE)
