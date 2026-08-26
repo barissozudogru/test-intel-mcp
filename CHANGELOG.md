@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2026-08-26
+
+### Added
+
+- A reproducible p-limit 7.3.1 case study based on 22 upstream tests and a checked-in lcov artifact.
+- A 1280 by 600 terminal demo showing the published report command against the real p-limit coverage data.
+- Source and documentation links in both executable help screens.
+
+### Changed
+
+- GitHub Action package execution now uses explicit `npm exec` argument separation.
+
 ## [0.7.0] - 2026-08-26
 
 ### Added

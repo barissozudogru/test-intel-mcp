@@ -16,6 +16,8 @@ Turn JavaScript and TypeScript coverage artifacts into practical test priorities
 
 [Tool page](https://petri-labs.org/tools/test-intel-mcp/) · [npm](https://www.npmjs.com/package/@barissozudogru/test-intel-mcp) · Listed in the official [MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.barissozudogru%2Ftest-intel/versions/latest)
 
+![test-intel-mcp analyzing real p-limit coverage](./assets/demo.gif)
+
 ## Start in one minute
 
 Add one local server entry to any stdio-compatible MCP client:
@@ -57,6 +59,11 @@ Summary: 0 critical, 0 high, 0 medium, 1 low priority
 
 The same server reads lcov, Istanbul JSON, and Cobertura files to surface uncovered functions, lines, and branches.
 
+A pinned [p-limit 7.3.1 case study](./evidence/p-limit-7.3.1/) reproduces
+coverage from the upstream project's 22 passing tests. `test-intel-report`
+reduces its lcov artifact to two uncovered lines and one uncovered branch while
+preserving the original coverage file for inspection.
+
 If this saves you time, consider [starring the repository](https://github.com/barissozudogru/test-intel-mcp). It helps other developers find it.
 
 ## Tools
@@ -83,7 +90,7 @@ Heuristic source-to-test matching and complexity scores are prioritization signa
 The package also includes a non-MCP command for CI and terminal use:
 
 ```bash
-npx --yes --package @barissozudogru/test-intel-mcp test-intel-report coverage/lcov.info
+npx -y -p @barissozudogru/test-intel-mcp test-intel-report coverage/lcov.info
 ```
 
 An explicit format can be supplied when the filename is ambiguous:
@@ -110,7 +117,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run tests with coverage
         run: npm ci && npm test -- --coverage
-      - uses: barissozudogru/test-intel-mcp@v0.7.0
+      - uses: barissozudogru/test-intel-mcp@v0.8.0
         with:
           coverage-path: coverage/lcov.info
 ```

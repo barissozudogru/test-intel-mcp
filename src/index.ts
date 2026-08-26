@@ -1248,6 +1248,21 @@ server.registerTool(
 // ---------------------------------------------------------------------------
 
 async function main() {
+  if (process.argv.includes('--help') || process.argv.includes('-h')) {
+    process.stdout.write([
+      'test-intel-mcp - local test coverage intelligence over MCP',
+      '',
+      'Usage:',
+      '  test-intel-mcp            Start the stdio MCP server',
+      '  test-intel-mcp --http     Start the HTTP transport',
+      '',
+      'Source and documentation:',
+      '  https://github.com/barissozudogru/test-intel-mcp',
+      '',
+    ].join('\n'));
+    return;
+  }
+
   const useHttp = process.argv.includes('--http') || (process.env.TRANSPORT ?? '').toLowerCase() === 'http';
 
   if (useHttp) {

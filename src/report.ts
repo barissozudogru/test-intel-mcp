@@ -4,7 +4,11 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { fileURLToPath } from "node:url";
 
-const [coveragePath, requestedFormat] = process.argv.slice(2);
+const rawArgs = process.argv.slice(2);
+const helpRequested = rawArgs.includes("--help") || rawArgs.includes("-h");
+const [coveragePath, requestedFormat] = rawArgs.filter(
+  (arg) => arg !== "--help" && arg !== "-h"
+);
 const formats = new Set(["lcov", "istanbul", "cobertura"]);
 
 function firstText(content: unknown): string | undefined {
@@ -24,15 +28,24 @@ function firstText(content: unknown): string | undefined {
   return undefined;
 }
 
-function usage(): never {
-  process.stderr.write(
-    "Usage: test-intel-report <coverage-path> [lcov|istanbul|cobertura]\n"
-  );
-  process.exit(1);
+function usage(exitCode: number): never {
+  const output = [
+    "Usage: test-intel-report <coverage-path> [lcov|istanbul|cobertura]",
+    "",
+    "Source and documentation:",
+    "  https://github.com/barissozudogru/test-intel-mcp",
+    "",
+  ].join("\n");
+  (exitCode === 0 ? process.stdout : process.stderr).write(output);
+  process.exit(exitCode);
+}
+
+if (helpRequested) {
+  usage(0);
 }
 
 if (!coveragePath || (requestedFormat && !formats.has(requestedFormat))) {
-  usage();
+  usage(1);
 }
 
 const client = new Client({ name: "test-intel-report", version: "1.0.0" });

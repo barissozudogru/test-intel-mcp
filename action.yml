@@ -33,9 +33,9 @@ runs:
         set +e
         package_version="$(node -p "require('$GITHUB_ACTION_PATH/package.json').version")"
         if [ -n "$INPUT_FORMAT" ]; then
-          report="$(npx --yes --package "@barissozudogru/test-intel-mcp@${package_version}" test-intel-report "$INPUT_COVERAGE_PATH" "$INPUT_FORMAT" 2>&1)"
+          report="$(npm exec --yes --package="@barissozudogru/test-intel-mcp@${package_version}" -- test-intel-report "$INPUT_COVERAGE_PATH" "$INPUT_FORMAT" 2>&1)"
         else
-          report="$(npx --yes --package "@barissozudogru/test-intel-mcp@${package_version}" test-intel-report "$INPUT_COVERAGE_PATH" 2>&1)"
+          report="$(npm exec --yes --package="@barissozudogru/test-intel-mcp@${package_version}" -- test-intel-report "$INPUT_COVERAGE_PATH" 2>&1)"
         fi
         status=$?
         set -e
