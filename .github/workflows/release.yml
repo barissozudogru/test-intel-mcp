@@ -38,7 +38,14 @@ jobs:
       # registry-url is not enough to steer the publish.
       - name: Publish to npm
         if: ${{ env.NPM_TOKEN != '' }}
-        run: npm publish --@barissozudogru:registry=https://registry.npmjs.org
+        run: |
+          package_name="$(node -p "require('./package.json').name")"
+          package_version="$(node -p "require('./package.json').version")"
+          if npm view "${package_name}@${package_version}" version --@barissozudogru:registry=https://registry.npmjs.org >/dev/null 2>&1; then
+            echo "${package_name}@${package_version} is already on npm"
+          else
+            npm publish --@barissozudogru:registry=https://registry.npmjs.org
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -50,7 +57,14 @@ jobs:
           scope: "@barissozudogru"
 
       - name: Publish to GitHub Packages
-        run: npm publish --@barissozudogru:registry=https://npm.pkg.github.com
+        run: |
+          package_name="$(node -p "require('./package.json').name")"
+          package_version="$(node -p "require('./package.json').version")"
+          if npm view "${package_name}@${package_version}" version --@barissozudogru:registry=https://npm.pkg.github.com >/dev/null 2>&1; then
+            echo "${package_name}@${package_version} is already on GitHub Packages"
+          else
+            npm publish --@barissozudogru:registry=https://npm.pkg.github.com
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -63,7 +77,15 @@ jobs:
       - name: Publish to the official MCP Registry
         run: |
           ./mcp-publisher login github-oidc
-          ./mcp-publisher publish
+          for attempt in 1 2 3 4 5; do
+            if ./mcp-publisher publish; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              exit 1
+            fi
+            sleep "$((attempt * 5))"
+          done
 
       - name: Create GitHub release
         env:

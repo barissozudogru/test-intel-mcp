@@ -8,12 +8,12 @@
     "url": "https://github.com/barissozudogru/test-intel-mcp",
     "source": "github"
   },
-  "version": "0.8.0",
+  "version": "0.8.1",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@barissozudogru/test-intel-mcp",
-      "version": "0.8.0",
+      "version": "0.8.1",
       "transport": {
         "type": "stdio"
       }

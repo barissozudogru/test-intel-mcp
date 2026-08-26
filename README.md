@@ -117,7 +117,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run tests with coverage
         run: npm ci && npm test -- --coverage
-      - uses: barissozudogru/test-intel-mcp@v0.8.0
+      - uses: barissozudogru/test-intel-mcp@v0.8.1
         with:
           coverage-path: coverage/lcov.info
 ```
