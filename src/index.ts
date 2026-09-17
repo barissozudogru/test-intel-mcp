@@ -69,6 +69,16 @@ function walkDir(dir: string, extensions: string[], visited = new Set<string>(),
   return results;
 }
 
+// Only a real test file may mark a source as tested: a basename carrying
+// .test. or .spec., or any file under a __tests__ directory. An explicit
+// test_dir also contains helpers and fixtures that import source modules,
+// and treating those as tests made their imports hide missing tests.
+function isTestFile(file: string): boolean {
+  const base = path.basename(file);
+  if (base.includes('.test.') || base.includes('.spec.')) return true;
+  return file.split(path.sep).includes('__tests__');
+}
+
 // ---------------------------------------------------------------------------
 // Tool 1: analyze_test_coverage
 // ---------------------------------------------------------------------------
@@ -1001,12 +1011,7 @@ server.registerTool(
       return { content: [{ type: 'text' as const, text: `No source files found in ${source_dir} with extensions: ${exts.join(', ')}` }] };
     }
 
-    const allTestFiles = test_dir
-      ? walkDir(test_dir, exts)
-      : walkDir(source_dir, exts).filter(f => {
-          const base = path.basename(f);
-          return base.includes('.test.') || base.includes('.spec.');
-        });
+    const allTestFiles = walkDir(test_dir ?? source_dir, exts).filter(isTestFile);
 
     // Build a set of test file basenames for fast lookup
     const testBasenames = new Set(allTestFiles.map(f => path.basename(f)));
