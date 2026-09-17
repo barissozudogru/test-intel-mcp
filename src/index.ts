@@ -89,17 +89,16 @@ function parseLcov(content: string): UncoveredItem[] {
   const fileData = new Map<string, {
     uncoveredFunctions: string[];
     uncoveredLines: number[];
-    uncoveredBranches: string[];
     totalLines: number;
     hitLines: number;
     totalFuncs: number;
     hitFuncs: number;
-    totalBranches: number;
-    hitBranches: number;
     // For merging: line hit counts keyed by line number
     lineHits: Map<number, number>;
     // For merging: function hit counts keyed by name
     funcHits: Map<string, number>;
+    // For merging: branch taken counts keyed by line:block:branch
+    branchHits: Map<string, number>;
     // Declared function names, deduped so repeated SF: records don't inflate the total
     funcNames: Set<string>;
   }>();
@@ -111,15 +110,13 @@ function parseLcov(content: string): UncoveredItem[] {
       fileData.set(fileName, {
         uncoveredFunctions: [],
         uncoveredLines: [],
-        uncoveredBranches: [],
         totalLines: 0,
         hitLines: 0,
         totalFuncs: 0,
         hitFuncs: 0,
-        totalBranches: 0,
-        hitBranches: 0,
         lineHits: new Map(),
         funcHits: new Map(),
+        branchHits: new Map(),
         funcNames: new Set(),
       });
     }
@@ -170,12 +167,11 @@ function parseLcov(content: string): UncoveredItem[] {
       const branchIdx = parts[2];
       const taken = parts[3];
       const d = getOrCreate(currentFile);
-      d.totalBranches++;
-      if (taken === '0' || taken === '-') {
-        d.uncoveredBranches.push(`line ${branchLine} block ${branchBlock} branch ${branchIdx}`);
-      } else {
-        d.hitBranches++;
-      }
+      // Merge: take max taken count for this branch ('-' means never taken)
+      const key = `${branchLine}:${branchBlock}:${branchIdx}`;
+      const count = taken === '-' ? 0 : parseInt(taken ?? '0', 10);
+      const existing = d.branchHits.get(key) ?? 0;
+      d.branchHits.set(key, Math.max(existing, count));
     } else if (line === 'end_of_record' && currentFile) {
       currentFile = null;
     }
@@ -205,16 +201,28 @@ function parseLcov(content: string): UncoveredItem[] {
       else uncoveredFunctions.push(fnName);
     }
 
+    // Rebuild uncoveredBranches, hitBranches and totalBranches from merged branchHits
+    let hitBranches = 0;
+    const uncoveredBranches: string[] = [];
+    for (const [key, hits] of d.branchHits) {
+      if (hits > 0) hitBranches++;
+      else {
+        const [branchLine, branchBlock, branchIdx] = key.split(':');
+        uncoveredBranches.push(`line ${branchLine} block ${branchBlock} branch ${branchIdx}`);
+      }
+    }
+    const totalBranches = d.branchHits.size;
+
     const lineCoverage = d.totalLines > 0 ? Math.round((hitLines / d.totalLines) * 100) : 100;
     const functionCoverage = d.totalFuncs > 0 ? Math.round((hitFuncs / d.totalFuncs) * 100) : 100;
-    const branchCoverage = d.totalBranches > 0 ? Math.round((d.hitBranches / d.totalBranches) * 100) : 100;
+    const branchCoverage = totalBranches > 0 ? Math.round((hitBranches / totalBranches) * 100) : 100;
 
-    if (uncoveredLines.length > 0 || uncoveredFunctions.length > 0 || d.uncoveredBranches.length > 0) {
+    if (uncoveredLines.length > 0 || uncoveredFunctions.length > 0 || uncoveredBranches.length > 0) {
       files.push({
         file: fileName,
         uncoveredFunctions,
         uncoveredLines: [...new Set(uncoveredLines)].sort((a, b) => a - b),
-        uncoveredBranches: d.uncoveredBranches,
+        uncoveredBranches,
         lineCoverage,
         functionCoverage,
         branchCoverage,
