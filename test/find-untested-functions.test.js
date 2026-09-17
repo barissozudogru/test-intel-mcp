@@ -118,3 +118,61 @@ test("a bare-named file under __tests__ in an explicit test_dir still counts as 
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("a bare package import without a path segment does not count as a test", async () => {
+  // The specifier "thing" has no path segment, so it cannot point at the
+  // workspace file src/thing.ts no matter how the names coincide.
+  const root = writeWorkspace({
+    "src/thing.ts": thingSource,
+    "tests/other.test.ts": 'import { computeA } from "thing";\n\ncomputeA(3);\n',
+  });
+
+  try {
+    const report = await findUntested(root, {
+      source_dir: path.join(root, "src"),
+      test_dir: path.join(root, "tests"),
+    });
+
+    assert.match(report, /Found 1 source file\(s\) with no test coverage/);
+    assert.match(report, /computeA \(line 1, function\)/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("an import of a longer name does not count as a test for the shorter one", async () => {
+  const root = writeWorkspace({
+    "src/thing.ts": thingSource,
+    "tests/thingExtra.test.ts": 'import { extra } from "../src/thingExtra.js";\n\nextra();\n',
+  });
+
+  try {
+    const report = await findUntested(root, {
+      source_dir: path.join(root, "src"),
+      test_dir: path.join(root, "tests"),
+    });
+
+    assert.match(report, /Found 1 source file\(s\) with no test coverage/);
+    assert.match(report, /Source: .*src\/thing\.ts/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("an extension-less import still points at the source file", async () => {
+  const root = writeWorkspace({
+    "src/thing.ts": thingSource,
+    "tests/thing.test.ts": 'import { computeA } from "../src/thing";\n\ncomputeA(4);\n',
+  });
+
+  try {
+    const report = await findUntested(root, {
+      source_dir: path.join(root, "src"),
+      test_dir: path.join(root, "tests"),
+    });
+
+    assert.match(report, /All 1 source file\(s\) have corresponding tests\. No gaps found\./);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
