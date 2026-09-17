@@ -79,6 +79,25 @@ function isTestFile(file: string): boolean {
   return file.split(path.sep).includes('__tests__');
 }
 
+// Import detection records the final path segment of every module specifier
+// a test file references, both as written and without one letters-only
+// extension, so './thing' and './thing.js' both point at thing.ts. Collecting
+// the segments once lets each source file do a set lookup instead of running
+// a fresh regular expression over the full text of every test file, which
+// made the tool cost sources * tests in scanned bytes.
+const IMPORT_SPECIFIER_RE = /(?:from\s+|require\s*\(\s*)['"]([^'"]*\/[^'"]*)['"]/g;
+
+function collectImportedBasenames(content: string, imported: Set<string>): void {
+  for (const match of content.matchAll(IMPORT_SPECIFIER_RE)) {
+    const specifier = match[1] ?? '';
+    const segment = specifier.slice(specifier.lastIndexOf('/') + 1);
+    if (segment === '') continue;
+    imported.add(segment);
+    const withoutExtension = segment.replace(/\.[a-zA-Z]+$/, '');
+    if (withoutExtension !== segment) imported.add(withoutExtension);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Tool 1: analyze_test_coverage
 // ---------------------------------------------------------------------------
@@ -1015,11 +1034,12 @@ server.registerTool(
 
     // Build a set of test file basenames for fast lookup
     const testBasenames = new Set(allTestFiles.map(f => path.basename(f)));
-    // Also build content index for import detection
-    const testContents = new Map<string, string>();
+    // Read each test file once and record what it imports, so the source
+    // loop below can check the set instead of rescanning every test file.
+    const importedBasenames = new Set<string>();
     for (const tf of allTestFiles) {
       try {
-        testContents.set(tf, readFile(tf));
+        collectImportedBasenames(readFile(tf), importedBasenames);
       } catch {
         // Skip unreadable test files
       }
@@ -1042,17 +1062,10 @@ server.registerTool(
       const testPaths = deriveTestPaths(srcFile, test_dir);
       const existingTests = testPaths.filter(tp => fileExists(tp));
 
-      // Fix 12: More specific import detection - match basename as a complete path segment
+      // Fix 12: Import detection matches the basename as a complete path
+      // segment, so an import of './thingHelper' does not mark thing.ts.
       const srcBasename = path.basename(srcFile, path.extname(srcFile));
-      const escapedBasename = srcBasename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      // Match from '.../<basename>' or require('.../<basename>') as complete segment
-      const importRe = new RegExp(
-        `(?:from\\s+['""][^'""]*/|require\\s*\\(\\s*['""][^'""]*/)${escapedBasename}(?:['""]|\\.[a-zA-Z]+['""])`,
-      );
-      const importedByTest = allTestFiles.some(tf => {
-        const tc = testContents.get(tf) ?? '';
-        return importRe.test(tc);
-      });
+      const importedByTest = importedBasenames.has(srcBasename);
 
       const hasTestFile = existingTests.length > 0 || importedByTest;
 
