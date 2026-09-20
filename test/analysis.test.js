@@ -54,6 +54,66 @@ test("analyzeComplexity measures cyclomatic decision points directly", () => {
   assert.equal(metrics.priority, "medium");
 });
 
+test("analyzeComplexity ignores keywords and operators inside comments", () => {
+  const body = [
+    "function processComments(val: number) {",
+    "  // if (foo && bar) return early",
+    "  /* while (pending) {",
+    "       if (retry) { return; }",
+    "     } */",
+    "  return val;",
+    "}",
+  ].join("\n");
+
+  const metrics = analyzeComplexity("processComments", 1, body);
+  assert.equal(metrics.cyclomaticComplexity, 1);
+  assert.equal(metrics.branches, 0);
+  assert.equal(metrics.loops, 0);
+  assert.equal(metrics.earlyReturns, 1);
+  assert.equal(metrics.priority, "low");
+});
+
+test("analyzeComplexity preserves regular expression literals containing comment sequences", () => {
+  const body = [
+    "function parsePatterns(url: string, code: string) {",
+    "  // if (ignored) return false;",
+    "  /* while (ignored) { return false; } */",
+    "  const urlPattern = /https?:\\/\\//;",
+    "  const commentPattern = /\\/\\*|\\/\\//; if (commentPattern.test(code)) return true;",
+    "  const blockPattern = /\\/*/; if (blockPattern.test(code)) return true;",
+    "  const slashClass = /[/]/;",
+    "  if (urlPattern.test(url) && slashClass.test(code)) {",
+    "    return true;",
+    "  }",
+    "  return false;",
+    "}",
+  ].join("\n");
+
+  const metrics = analyzeComplexity("parsePatterns", 1, body);
+  assert.equal(metrics.cyclomaticComplexity, 5);
+  assert.equal(metrics.branches, 4);
+  assert.equal(metrics.loops, 0);
+  assert.equal(metrics.earlyReturns, 4);
+  assert.equal(metrics.priority, "medium");
+});
+
+test("analyzeComplexity handles template literal interpolation and nested backticks", () => {
+  const body = [
+    "function formatUrl(url: string, path: string) {",
+    "  // if (ignored) return false;",
+    "  const full = `${`https://${url}`}/${path}`; if (full.length > 0) return full;",
+    "  return null;",
+    "}",
+  ].join("\n");
+
+  const metrics = analyzeComplexity("formatUrl", 1, body);
+  assert.equal(metrics.cyclomaticComplexity, 2);
+  assert.equal(metrics.branches, 1);
+  assert.equal(metrics.loops, 0);
+  assert.equal(metrics.earlyReturns, 2);
+  assert.equal(metrics.priority, "low");
+});
+
 test("suggestTestCases generates recommendations based on function signature and contents", () => {
   const body = [
     "export async function verifyUser(id: string, roles: string[]) {",

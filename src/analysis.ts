@@ -278,9 +278,289 @@ export function extractFunctionBodies(content: string): Array<{ name: string; li
   return results;
 }
 
+function isRegExpStart(prevText: string): boolean {
+  let j = prevText.length - 1;
+  while (j >= 0 && /\s/.test(prevText[j]!)) {
+    j--;
+  }
+  if (j < 0) {
+    return true;
+  }
+
+  const lastChar = prevText[j]!;
+
+  if (
+    lastChar === '(' ||
+    lastChar === '[' ||
+    lastChar === '{' ||
+    lastChar === ',' ||
+    lastChar === ';' ||
+    lastChar === ':' ||
+    lastChar === '?' ||
+    lastChar === '!' ||
+    lastChar === '&' ||
+    lastChar === '|' ||
+    lastChar === '^' ||
+    lastChar === '~' ||
+    lastChar === '*' ||
+    lastChar === '%' ||
+    lastChar === '<' ||
+    lastChar === '>' ||
+    lastChar === '='
+  ) {
+    return true;
+  }
+
+  if (lastChar === '+' || lastChar === '-') {
+    if (j > 0 && prevText[j - 1] === lastChar) {
+      return false;
+    }
+    return true;
+  }
+
+  if (lastChar === ')') {
+    let depth = 1;
+    let k = j - 1;
+    while (k >= 0 && depth > 0) {
+      if (prevText[k] === ')') depth++;
+      else if (prevText[k] === '(') depth--;
+      k--;
+    }
+    if (depth === 0) {
+      while (k >= 0 && /\s/.test(prevText[k]!)) {
+        k--;
+      }
+      const wordEnd = k;
+      while (k >= 0 && /[A-Za-z0-9_$]/.test(prevText[k]!)) {
+        k--;
+      }
+      const word = prevText.slice(k + 1, wordEnd + 1);
+      if (word === 'if' || word === 'while' || word === 'for' || word === 'with') {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (lastChar === '}') {
+    return true;
+  }
+
+  if (/[A-Za-z0-9_$]/.test(lastChar)) {
+    let k = j;
+    while (k >= 0 && /[A-Za-z0-9_$]/.test(prevText[k]!)) {
+      k--;
+    }
+    const word = prevText.slice(k + 1, j + 1);
+    const regexKeywords = new Set([
+      'return',
+      'case',
+      'default',
+      'throw',
+      'yield',
+      'await',
+      'typeof',
+      'void',
+      'delete',
+      'instanceof',
+      'in',
+      'else',
+      'do',
+      'new',
+    ]);
+    return regexKeywords.has(word);
+  }
+
+  return false;
+}
+
+function stripComments(code: string): string {
+  let result = '';
+  let i = 0;
+  let insideSingleQuote = false;
+  let insideDoubleQuote = false;
+  const templateStack: Array<{ inInterpolation: boolean; braceDepth: number }> = [];
+  let insideBlockComment = false;
+  let insideLineComment = false;
+
+  while (i < code.length) {
+    const ch = code[i]!;
+    const next = code[i + 1];
+
+    if (insideLineComment) {
+      if (ch === '\n') {
+        insideLineComment = false;
+        result += '\n';
+      }
+      i++;
+      continue;
+    }
+
+    if (insideBlockComment) {
+      if (ch === '*' && next === '/') {
+        insideBlockComment = false;
+        result += ' ';
+        i += 2;
+        continue;
+      }
+      if (ch === '\n') {
+        result += '\n';
+      }
+      i++;
+      continue;
+    }
+
+    if (insideSingleQuote) {
+      result += ch;
+      if (ch === '\\') {
+        if (i + 1 < code.length) {
+          result += code[i + 1]!;
+          i += 2;
+          continue;
+        }
+      } else if (ch === "'") {
+        insideSingleQuote = false;
+      }
+      i++;
+      continue;
+    }
+
+    if (insideDoubleQuote) {
+      result += ch;
+      if (ch === '\\') {
+        if (i + 1 < code.length) {
+          result += code[i + 1]!;
+          i += 2;
+          continue;
+        }
+      } else if (ch === '"') {
+        insideDoubleQuote = false;
+      }
+      i++;
+      continue;
+    }
+
+    const inTemplateText =
+      templateStack.length > 0 && !templateStack[templateStack.length - 1]!.inInterpolation;
+
+    if (inTemplateText) {
+      if (ch === '\\') {
+        result += ch;
+        if (i + 1 < code.length) {
+          result += code[i + 1]!;
+          i += 2;
+          continue;
+        }
+        i++;
+        continue;
+      }
+      if (ch === '$' && next === '{') {
+        templateStack[templateStack.length - 1]!.inInterpolation = true;
+        templateStack[templateStack.length - 1]!.braceDepth = 1;
+        result += '${';
+        i += 2;
+        continue;
+      }
+      if (ch === '`') {
+        templateStack.pop();
+        result += ch;
+        i++;
+        continue;
+      }
+      result += ch;
+      i++;
+      continue;
+    }
+
+    if (ch === '/' && next === '/') {
+      insideLineComment = true;
+      i += 2;
+      continue;
+    }
+
+    if (ch === '/' && next === '*') {
+      insideBlockComment = true;
+      i += 2;
+      continue;
+    }
+
+    if (ch === '/' && isRegExpStart(result)) {
+      result += ch;
+      i++;
+      let inCharClass = false;
+      while (i < code.length) {
+        const c = code[i]!;
+        result += c;
+        if (c === '\\') {
+          if (i + 1 < code.length) {
+            i++;
+            result += code[i]!;
+          }
+        } else if (c === '[') {
+          inCharClass = true;
+        } else if (c === ']' && inCharClass) {
+          inCharClass = false;
+        } else if (c === '/' && !inCharClass) {
+          i++;
+          while (i < code.length && /[a-z]/i.test(code[i]!)) {
+            result += code[i]!;
+            i++;
+          }
+          break;
+        } else if (c === '\n') {
+          i++;
+          break;
+        }
+        i++;
+      }
+      continue;
+    }
+
+    if (ch === "'") {
+      insideSingleQuote = true;
+      result += ch;
+      i++;
+      continue;
+    }
+
+    if (ch === '"') {
+      insideDoubleQuote = true;
+      result += ch;
+      i++;
+      continue;
+    }
+
+    if (ch === '`') {
+      templateStack.push({ inInterpolation: false, braceDepth: 0 });
+      result += ch;
+      i++;
+      continue;
+    }
+
+    if (templateStack.length > 0) {
+      if (ch === '{') {
+        templateStack[templateStack.length - 1]!.braceDepth++;
+      } else if (ch === '}') {
+        templateStack[templateStack.length - 1]!.braceDepth--;
+        if (templateStack[templateStack.length - 1]!.braceDepth <= 0) {
+          templateStack[templateStack.length - 1]!.braceDepth = 0;
+          templateStack[templateStack.length - 1]!.inInterpolation = false;
+        }
+      }
+    }
+
+    result += ch;
+    i++;
+  }
+
+  return result;
+}
+
 export function analyzeComplexity(name: string, line: number, body: string): FunctionComplexity {
+  const stripped = stripComments(body);
+
   // Remove lines that are entirely within quotes
-  const filteredLines = body.split('\n').filter(l => {
+  const filteredLines = stripped.split('\n').filter(l => {
     const trimmed = l.trim();
     return !(trimmed.startsWith("'") || trimmed.startsWith('"') || trimmed.startsWith('`'));
   });
@@ -300,8 +580,8 @@ export function analyzeComplexity(name: string, line: number, body: string): Fun
   // try+catch: 1 decision point (count try blocks only)
   const tryCatch = (filteredBody.match(/\btry\s*\{/g) ?? []).length;
 
-  const earlyReturns = (body.match(/\breturn\b/g) ?? []).length;
-  const asyncPatterns = (body.match(/\bawait\b|\bPromise\b|\bthen\s*\(|\bcatch\s*\(/g) ?? []).length;
+  const earlyReturns = (filteredBody.match(/\breturn\b/g) ?? []).length;
+  const asyncPatterns = (filteredBody.match(/\bawait\b|\bPromise\b|\bthen\s*\(|\bcatch\s*\(/g) ?? []).length;
 
   // Case labels as decision points
   const caseLabels = (filteredBody.match(/\bcase\s+[^:]+:/g) ?? []).length;
