@@ -1,6 +1,6 @@
 {
   "name": "@barissozudogru/test-intel-mcp",
-  "version": "0.8.4",
+  "version": "0.8.5",
   "mcpName": "io.github.barissozudogru/test-intel",
   "description": "Test coverage intelligence MCP server - coverage analysis, untested function detection, and complexity scoring",
   "type": "module",
