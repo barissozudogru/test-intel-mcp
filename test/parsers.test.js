@@ -57,6 +57,38 @@ test("parseLcov merges duplicate file records without double counting functions"
   assert.equal(items.length, 0);
 });
 
+test("parseLcov treats declared functions without FNDA records as uncovered", () => {
+  const lcov = [
+    "SF:src/calc.ts",
+    "FN:1,uncoveredFunc",
+    "DA:1,1",
+    "end_of_record",
+  ].join("\n");
+
+  const items = parseLcov(lcov);
+  assert.equal(items.length, 1);
+  assert.equal(items[0]?.file, "src/calc.ts");
+  assert.deepEqual(items[0]?.uncoveredFunctions, ["uncoveredFunc"]);
+  assert.equal(items[0]?.functionCoverage, 0);
+  assert.equal(items[0]?.lineCoverage, 100);
+
+  const mixed = [
+    "SF:src/mixed.ts",
+    "FN:1,covered",
+    "FN:10,notHit",
+    "FNDA:4,covered",
+    "DA:1,1",
+    "DA:10,1",
+    "end_of_record",
+  ].join("\n");
+
+  const mixedItems = parseLcov(mixed);
+  assert.equal(mixedItems.length, 1);
+  assert.equal(mixedItems[0]?.file, "src/mixed.ts");
+  assert.deepEqual(mixedItems[0]?.uncoveredFunctions, ["notHit"]);
+  assert.equal(mixedItems[0]?.functionCoverage, 50);
+});
+
 test("parseIstanbul maps statements, functions, and branches to uncovered items directly", () => {
   const payload = {
     "src/math.ts": {

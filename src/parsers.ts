@@ -62,6 +62,9 @@ export function parseLcov(content: string): UncoveredItem[] {
         d.funcNames.add(fnName);
         d.totalFuncs++;
       }
+      if (!d.funcHits.has(fnName)) {
+        d.funcHits.set(fnName, 0);
+      }
     } else if (line.startsWith('FNDA:') && currentFile) {
       // FNDA:<count>,<name>
       const [countStr, name] = line.slice(5).split(',');
@@ -113,10 +116,11 @@ export function parseLcov(content: string): UncoveredItem[] {
       else uncoveredLines.push(lineNo);
     }
 
-    // Rebuild uncoveredFunctions and hitFuncs from merged funcHits
+    // Rebuild uncoveredFunctions and hitFuncs from declared functions
     let hitFuncs = 0;
     const uncoveredFunctions: string[] = [];
-    for (const [fnName, hits] of d.funcHits) {
+    for (const fnName of d.funcNames) {
+      const hits = d.funcHits.get(fnName) ?? 0;
       if (hits > 0) hitFuncs++;
       else uncoveredFunctions.push(fnName);
     }
