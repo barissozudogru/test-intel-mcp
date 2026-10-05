@@ -89,6 +89,20 @@ test("parseLcov treats declared functions without FNDA records as uncovered", ()
   assert.equal(mixedItems[0]?.functionCoverage, 50);
 });
 
+test("parseLcov preserves commas in function names", () => {
+  const lcov = [
+    "SF:src/math.cpp",
+    "FN:1,add(int, int)",
+    "FNDA:0,add(int, int)",
+    "DA:1,0",
+    "end_of_record",
+  ].join("\n");
+
+  const items = parseLcov(lcov);
+  assert.equal(items.length, 1);
+  assert.deepEqual(items[0]?.uncoveredFunctions, ["add(int, int)"]);
+});
+
 test("parseIstanbul maps statements, functions, and branches to uncovered items directly", () => {
   const payload = {
     "src/math.ts": {
@@ -187,4 +201,3 @@ test("parseCobertura does not double count method lines or branches", () => {
   assert.equal(items[0]?.lineCoverage, 75);
   assert.equal(items[0]?.branchCoverage, 50);
 });
-

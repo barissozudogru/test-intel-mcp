@@ -57,7 +57,9 @@ export function parseLcov(content: string): UncoveredItem[] {
       // FN:<line>,<name>. Count each function name once so merged duplicate
       // SF: records don't double-count it and report too-low function coverage.
       const d = getOrCreate(currentFile);
-      const fnName = line.slice(3).split(',')[1] ?? 'unknown';
+      const fnData = line.slice(3);
+      const fnSeparator = fnData.indexOf(',');
+      const fnName = fnSeparator >= 0 ? fnData.slice(fnSeparator + 1) : 'unknown';
       if (!d.funcNames.has(fnName)) {
         d.funcNames.add(fnName);
         d.totalFuncs++;
@@ -67,9 +69,10 @@ export function parseLcov(content: string): UncoveredItem[] {
       }
     } else if (line.startsWith('FNDA:') && currentFile) {
       // FNDA:<count>,<name>
-      const [countStr, name] = line.slice(5).split(',');
-      const count = parseInt(countStr ?? '0', 10);
-      const fnName = name ?? 'unknown';
+      const fnData = line.slice(5);
+      const fnSeparator = fnData.indexOf(',');
+      const count = parseInt(fnSeparator >= 0 ? fnData.slice(0, fnSeparator) : fnData, 10);
+      const fnName = fnSeparator >= 0 ? fnData.slice(fnSeparator + 1) : 'unknown';
       const d = getOrCreate(currentFile);
       // Merge: take max hit count for this function
       const existing = d.funcHits.get(fnName) ?? 0;
