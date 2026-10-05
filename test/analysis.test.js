@@ -37,6 +37,24 @@ test("extractFunctions identifies declared functions and arrow functions directl
   assert.equal(funcs[2]?.line, 9);
 });
 
+test("extractFunctionBodies ignores declarations inside block comments", () => {
+  const source = [
+    "function real() {",
+    "  return 1;",
+    "}",
+    "/*",
+    "function fake() {",
+    "  return 2;",
+    "}",
+    "*/",
+  ].join("\n");
+
+  assert.deepEqual(
+    extractFunctionBodies(source).map(({ name, line }) => ({ name, line })),
+    [{ name: "real", line: 1 }],
+  );
+});
+
 test("analyzeComplexity measures cyclomatic decision points directly", () => {
   const body = [
     "function process(val: number | null, flag: boolean) {",
