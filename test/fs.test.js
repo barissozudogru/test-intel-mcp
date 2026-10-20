@@ -32,6 +32,14 @@ test("collectImportedBasenames extracts imported segments directly", () => {
   assert.ok(imported.has("math"));
 });
 
+test("collectImportedBasenames extracts side-effect imports", () => {
+  const imported = new Set();
+  collectImportedBasenames('import "../src/setup.js";', imported);
+
+  assert.ok(imported.has("setup.js"));
+  assert.ok(imported.has("setup"));
+});
+
 test("walkDir finds files with matching extensions while skipping ignored directories", () => {
   const root = fs.mkdtempSync(path.join(process.cwd(), "test-walk-"));
   try {

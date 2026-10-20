@@ -73,7 +73,7 @@ export function isTestFile(file: string): boolean {
 // the segments once lets each source file do a set lookup instead of running
 // a fresh regular expression over the full text of every test file, which
 // made the tool cost sources * tests in scanned bytes.
-export const IMPORT_SPECIFIER_RE = /(?:from\s+|require\s*\(\s*)['"]([^'"]*\/[^'"]*)['"]/g;
+export const IMPORT_SPECIFIER_RE = /(?:from\s+|import\s*|require\s*\(\s*)['"]([^'"]*\/[^'"]*)['"]/g;
 
 export function collectImportedBasenames(content: string, imported: Set<string>): void {
   for (const match of content.matchAll(IMPORT_SPECIFIER_RE)) {
