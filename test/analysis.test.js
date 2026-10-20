@@ -37,6 +37,19 @@ test("extractFunctions identifies declared functions and arrow functions directl
   assert.equal(funcs[2]?.line, 9);
 });
 
+test("extractFunctions ignores comment markers inside string literals", () => {
+  const source = [
+    'const marker = "/*";',
+    "function visible() {",
+    "  return marker;",
+    "}",
+  ].join("\n");
+
+  assert.deepEqual(extractFunctions(source), [
+    { name: "visible", line: 2, kind: "function" },
+  ]);
+});
+
 test("analyzeComplexity measures cyclomatic decision points directly", () => {
   const body = [
     "function process(val: number | null, flag: boolean) {",
