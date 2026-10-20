@@ -27,32 +27,12 @@ export const FUNCTION_PATTERNS: Array<{ re: RegExp; kind: FunctionRef['kind'] }>
 ];
 
 export function extractFunctions(content: string): FunctionRef[] {
-  const lines = content.split('\n');
+  const lines = stripComments(content).split('\n');
   const found: FunctionRef[] = [];
   const seen = new Set<string>();
-  let insideBlockComment = false;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? '';
-
-    // Track block comment state
-    if (insideBlockComment) {
-      if (line.includes('*/')) {
-        insideBlockComment = false;
-      }
-      continue;
-    }
-
-    // Check for block comment start (without closing on same line)
-    if (line.includes('/*')) {
-      if (!line.includes('*/')) {
-        insideBlockComment = true;
-      }
-      // If /* and */ are on the same line, it is an inline comment, so do not skip
-    }
-
-    // Skip line comment lines
-    if (/^\s*(\/\/|\*)/.test(line)) continue;
 
     for (const { re, kind } of FUNCTION_PATTERNS) {
       const m = re.exec(line);
