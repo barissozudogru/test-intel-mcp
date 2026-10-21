@@ -6,9 +6,10 @@ import { fileURLToPath } from "node:url";
 
 const rawArgs = process.argv.slice(2);
 const helpRequested = rawArgs.includes("--help") || rawArgs.includes("-h");
-const [coveragePath, requestedFormat] = rawArgs.filter(
+const positionalArgs = rawArgs.filter(
   (arg) => arg !== "--help" && arg !== "-h"
 );
+const [coveragePath, requestedFormat] = positionalArgs;
 const formats = new Set(["lcov", "istanbul", "cobertura"]);
 
 function firstText(content: unknown): string | undefined {
@@ -44,7 +45,11 @@ if (helpRequested) {
   usage(0);
 }
 
-if (!coveragePath || (requestedFormat && !formats.has(requestedFormat))) {
+if (
+  positionalArgs.length > 2 ||
+  !coveragePath ||
+  (requestedFormat && !formats.has(requestedFormat))
+) {
   usage(1);
 }
 
