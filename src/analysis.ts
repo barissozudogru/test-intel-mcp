@@ -196,7 +196,7 @@ export function countBraceDepthChange(line: string, state: {
 }
 
 export function extractFunctionBodies(content: string): Array<{ name: string; line: number; body: string }> {
-  const lines = content.split('\n');
+  const lines = stripComments(content).split('\n');
   const results: Array<{ name: string; line: number; body: string }> = [];
 
   let i = 0;
