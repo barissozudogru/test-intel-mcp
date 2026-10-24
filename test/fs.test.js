@@ -32,6 +32,14 @@ test("collectImportedBasenames extracts imported segments directly", () => {
   assert.ok(imported.has("math"));
 });
 
+test("collectImportedBasenames extracts dynamic import segments", () => {
+  const imported = new Set();
+  collectImportedBasenames('const load = () => import("./lazy.js");', imported);
+
+  assert.ok(imported.has("lazy.js"));
+  assert.ok(imported.has("lazy"));
+});
+
 test("walkDir finds files with matching extensions while skipping ignored directories", () => {
   const root = fs.mkdtempSync(path.join(process.cwd(), "test-walk-"));
   try {
