@@ -152,6 +152,31 @@ test("parseCobertura computes line and method coverage directly", () => {
   assert.equal(items[0]?.lineCoverage, 50);
 });
 
+test("parseCobertura accepts single-quoted XML attributes", () => {
+  const xml = [
+    "<coverage>",
+    "  <class filename = 'src/widget.ts'>",
+    "    <methods>",
+    "      <method name = 'destroy'>",
+    "        <lines><line number = '10' hits = '0'/></lines>",
+    "      </method>",
+    "    </methods>",
+    "    <lines><line number = '10' hits = '0' branch = 'true' condition-coverage = '50% (1/2)'/></lines>",
+    "  </class>",
+    "</coverage>",
+  ].join("\n");
+
+  const items = parseCobertura(xml);
+  assert.equal(items.length, 1);
+  assert.equal(items[0]?.file, "src/widget.ts");
+  assert.deepEqual(items[0]?.uncoveredFunctions, ["destroy"]);
+  assert.deepEqual(items[0]?.uncoveredLines, [10]);
+  assert.deepEqual(items[0]?.uncoveredBranches, ["1 branch(es) uncovered"]);
+  assert.equal(items[0]?.functionCoverage, 0);
+  assert.equal(items[0]?.lineCoverage, 0);
+  assert.equal(items[0]?.branchCoverage, 50);
+});
+
 test("parseCobertura does not double count method lines or branches", () => {
   const xml = [
     '<coverage>',
