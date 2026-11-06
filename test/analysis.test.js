@@ -131,3 +131,14 @@ test("suggestTestCases generates recommendations based on function signature and
   assert.ok(categories.has("error-handling"));
   assert.ok(categories.has("async"));
 });
+
+test("suggestTestCases reads parameters from method signatures", () => {
+  const body = [
+    "async load(id: string) {",
+    "  return id;",
+    "}",
+  ].join("\n");
+
+  const suggestions = suggestTestCases(body, "load");
+  assert.ok(suggestions.some((s) => s.category === "edge-case" && s.description.includes("missing")));
+});

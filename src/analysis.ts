@@ -621,8 +621,8 @@ export function suggestTestCases(functionBody: string, functionName: string): Te
   });
 
   // Detect parameters from signature line
-  const signatureMatch = /function\s+\w+\s*\(([^)]*)\)|(?:const|let|var)\s+\w+\s*=\s*(?:async\s*)?(?:\(([^)]*)\)|\w+)\s*=>/.exec(functionBody);
-  const paramStr = signatureMatch?.[1] ?? signatureMatch?.[2] ?? '';
+  const signatureMatch = /function\s+\w+\s*\(([^)]*)\)|(?:const|let|var)\s+\w+\s*=\s*(?:async\s*)?(?:\(([^)]*)\)|\w+)\s*=>|^\s*(?:(?:public|private|protected|static|override|abstract|get|set|async)\s+)*[A-Za-z_$][A-Za-z0-9_$]*\s*\(([^)]*)\)/m.exec(functionBody);
+  const paramStr = signatureMatch?.[1] ?? signatureMatch?.[2] ?? signatureMatch?.[3] ?? '';
   const params = paramStr.split(',').map(p => p.trim()).filter(Boolean);
 
   if (params.length > 0) {
