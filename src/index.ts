@@ -134,7 +134,7 @@ server.registerTool(
     }),
   },
   async ({ source_dir, test_dir, extensions }) => {
-    const exts = extensions ?? ['.ts', '.tsx', '.js', '.jsx'];
+    const exts = (extensions ?? ['.ts', '.tsx', '.js', '.jsx']).map(ext => ext.toLowerCase());
 
     let sourceFiles: string[];
     try {
