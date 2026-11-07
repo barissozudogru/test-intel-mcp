@@ -176,3 +176,21 @@ test("an extension-less import still points at the source file", async () => {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("extension matching is case-insensitive for requested extensions", async () => {
+  const root = writeWorkspace({
+    "src/thing.ts": thingSource,
+  });
+
+  try {
+    const report = await findUntested(root, {
+      source_dir: path.join(root, "src"),
+      extensions: [".TS"],
+    });
+
+    assert.match(report, /Found 1 source file\(s\) with no test coverage/);
+    assert.match(report, /computeA \(line 1, function\)/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
