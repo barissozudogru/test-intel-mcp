@@ -37,6 +37,22 @@ test("extractFunctions identifies declared functions and arrow functions directl
   assert.equal(funcs[2]?.line, 9);
 });
 
+test("extractFunctions recognizes generators with whitespace before the star", () => {
+  const funcs = extractFunctions([
+    "export function *items() {",
+    "  yield 1;",
+    "}",
+    "export async function *asyncItems() {",
+    "  yield 1;",
+    "}",
+  ].join("\n"));
+
+  assert.deepEqual(funcs.map(({ name, kind }) => ({ name, kind })), [
+    { name: "items", kind: "function" },
+    { name: "asyncItems", kind: "async-function" },
+  ]);
+});
+
 test("analyzeComplexity measures cyclomatic decision points directly", () => {
   const body = [
     "function process(val: number | null, flag: boolean) {",
