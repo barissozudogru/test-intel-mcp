@@ -14,9 +14,9 @@ export interface UntestedSource {
 // Single shared pattern list for extracting function declarations and bodies
 export const FUNCTION_PATTERNS: Array<{ re: RegExp; kind: FunctionRef['kind'] }> = [
   // async function foo(
-  { re: /^\s*(?:export\s+)?(?:default\s+)?async\s+function\*?\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/m, kind: 'async-function' },
+  { re: /^\s*(?:export\s+)?(?:default\s+)?async\s+function(?:\s+|\s*\*\s*)([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/m, kind: 'async-function' },
   // function foo( / function* foo(
-  { re: /^\s*(?:export\s+)?(?:default\s+)?function\*?\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/m, kind: 'function' },
+  { re: /^\s*(?:export\s+)?(?:default\s+)?function(?:\s+|\s*\*\s*)([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/m, kind: 'function' },
   // async method: async foo(
   { re: /^\s*(?:(?:public|private|protected|static|override|abstract)\s+)*async\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/m, kind: 'async-method' },
   // method pattern with zero or more modifiers
