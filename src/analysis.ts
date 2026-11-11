@@ -27,29 +27,12 @@ export const FUNCTION_PATTERNS: Array<{ re: RegExp; kind: FunctionRef['kind'] }>
 ];
 
 export function extractFunctions(content: string): FunctionRef[] {
-  const lines = content.split('\n');
+  const lines = stripComments(content).split('\n');
   const found: FunctionRef[] = [];
   const seen = new Set<string>();
-  let insideBlockComment = false;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? '';
-
-    // Track block comment state
-    if (insideBlockComment) {
-      if (line.includes('*/')) {
-        insideBlockComment = false;
-      }
-      continue;
-    }
-
-    // Check for block comment start (without closing on same line)
-    if (line.includes('/*')) {
-      if (!line.includes('*/')) {
-        insideBlockComment = true;
-      }
-      // If /* and */ are on the same line, it is an inline comment, so do not skip
-    }
 
     // Skip line comment lines
     if (/^\s*(\/\/|\*)/.test(line)) continue;
@@ -197,11 +180,12 @@ export function countBraceDepthChange(line: string, state: {
 
 export function extractFunctionBodies(content: string): Array<{ name: string; line: number; body: string }> {
   const lines = content.split('\n');
+  const discoveryLines = stripComments(content).split('\n');
   const results: Array<{ name: string; line: number; body: string }> = [];
 
   let i = 0;
   while (i < lines.length) {
-    const line = lines[i] ?? '';
+    const line = discoveryLines[i] ?? '';
 
     let funcName: string | null = null;
     let isArrow = false;
@@ -223,7 +207,7 @@ export function extractFunctionBodies(content: string): Array<{ name: string; li
       if (isArrow) {
         let hasBrace = false;
         for (let k = i; k <= Math.min(i + 1, lines.length - 1); k++) {
-          if ((lines[k] ?? '').includes('{')) { hasBrace = true; break; }
+          if ((discoveryLines[k] ?? '').includes('{')) { hasBrace = true; break; }
         }
 
         if (!hasBrace) {
