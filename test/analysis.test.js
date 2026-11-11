@@ -37,6 +37,19 @@ test("extractFunctions identifies declared functions and arrow functions directl
   assert.equal(funcs[2]?.line, 9);
 });
 
+test("extractFunctions finds declarations after inline block comments", () => {
+  const funcs = extractFunctions("/* exported helper */ function visible() {}\n");
+
+  assert.deepEqual(funcs, [{ name: "visible", line: 1, kind: "function" }]);
+});
+
+test("extractFunctionBodies preserves comments in returned function bodies", () => {
+  const source = "function visible() { /* keep this comment */ return 1; }\n";
+  const bodies = extractFunctionBodies(source);
+
+  assert.equal(bodies[0]?.body, source + "\n");
+});
+
 test("analyzeComplexity measures cyclomatic decision points directly", () => {
   const body = [
     "function process(val: number | null, flag: boolean) {",
