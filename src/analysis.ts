@@ -26,6 +26,10 @@ export const FUNCTION_PATTERNS: Array<{ re: RegExp; kind: FunctionRef['kind'] }>
   { re: /^\s*(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[A-Za-z_$][A-Za-z0-9_$]*)\s*=>/m, kind: 'arrow' },
 ];
 
+function stripLeadingBlockComments(line: string): string {
+  return line.replace(/^(?:\s*\/\*[\s\S]*?\*\/\s*)+/, '');
+}
+
 export function extractFunctions(content: string): FunctionRef[] {
   const lines = content.split('\n');
   const found: FunctionRef[] = [];
@@ -54,8 +58,13 @@ export function extractFunctions(content: string): FunctionRef[] {
     // Skip line comment lines
     if (/^\s*(\/\/|\*)/.test(line)) continue;
 
+    // A declaration may follow an inline block comment on the same line.
+    // Remove only leading comment blocks so the anchored declaration patterns
+    // can still recognize the code without changing its reported line.
+    const declarationLine = stripLeadingBlockComments(line);
+
     for (const { re, kind } of FUNCTION_PATTERNS) {
-      const m = re.exec(line);
+      const m = re.exec(declarationLine);
       if (m) {
         const name = m[1];
         if (!name) continue;
@@ -206,8 +215,10 @@ export function extractFunctionBodies(content: string): Array<{ name: string; li
     let funcName: string | null = null;
     let isArrow = false;
 
+    const declarationLine = stripLeadingBlockComments(line);
+
     for (const { re, kind } of FUNCTION_PATTERNS) {
-      const m = re.exec(line);
+      const m = re.exec(declarationLine);
       if (m && m[1]) {
         const name = m[1];
         if (!['if', 'for', 'while', 'switch', 'catch', 'constructor', 'class'].includes(name)) {

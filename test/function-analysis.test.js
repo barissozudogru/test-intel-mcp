@@ -231,3 +231,25 @@ test("get_function_complexity counts decision points and bands them by priority"
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("analysis tools find declarations after inline block comments", async () => {
+  const root = writeWorkspace({
+    "inline-comment.ts": "/* generated header */ function real(value) { if (value) return value; return 0; }\n",
+  });
+
+  try {
+    const complexity = await callTool(root, "get_function_complexity", {
+      file_path: path.join(root, "inline-comment.ts"),
+    });
+    assert.match(complexity, /Total functions analyzed: 1/);
+    assert.match(complexity, /\| real\s+\|/);
+
+    const suggestions = await callTool(root, "suggest_test_cases", {
+      file_path: path.join(root, "inline-comment.ts"),
+      function_name: "real",
+    });
+    assert.match(suggestions, /Test case suggestions for: real/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
