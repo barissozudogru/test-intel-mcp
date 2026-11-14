@@ -37,6 +37,23 @@ test("extractFunctions identifies declared functions and arrow functions directl
   assert.equal(funcs[2]?.line, 9);
 });
 
+test("extractFunctions finds declarations after inline block comments", () => {
+  const source = "/* generated header */ function real(value) { return value; }";
+  const funcs = extractFunctions(source);
+
+  assert.deepEqual(funcs, [{
+    name: "real",
+    line: 1,
+    kind: "function",
+  }]);
+
+  assert.deepEqual(extractFunctionBodies(source), [{
+    name: "real",
+    line: 1,
+    body: `${source}\n`,
+  }]);
+});
+
 test("analyzeComplexity measures cyclomatic decision points directly", () => {
   const body = [
     "function process(val: number | null, flag: boolean) {",
