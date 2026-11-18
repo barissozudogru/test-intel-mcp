@@ -188,3 +188,70 @@ test("parseCobertura does not double count method lines or branches", () => {
   assert.equal(items[0]?.branchCoverage, 50);
 });
 
+test("parseCobertura combines classes that share a filename", () => {
+  const xml = [
+    '<coverage>',
+    '  <packages><package><classes>',
+    '    <class name="First" filename="src/shared.ts">',
+    '      <lines>',
+    '        <line number="1" hits="1"/>',
+    '        <line number="2" hits="0"/>',
+    '      </lines>',
+    '    </class>',
+    '    <class name="Second" filename="src/shared.ts">',
+    '      <lines>',
+    '        <line number="3" hits="0"/>',
+    '        <line number="4" hits="1"/>',
+    '      </lines>',
+    '    </class>',
+    '  </classes></package></packages>',
+    '</coverage>',
+  ].join('\n');
+
+  const items = parseCobertura(xml);
+  assert.equal(items.length, 1);
+  assert.equal(items[0]?.file, "src/shared.ts");
+  assert.deepEqual(items[0]?.uncoveredLines, [2, 3]);
+  assert.equal(items[0]?.lineCoverage, 50);
+});
+
+test("parseCobertura merges overlapping lines and aggregates class metrics", () => {
+  const xml = [
+    '<coverage>',
+    '  <packages><package><classes>',
+    '    <class name="Partial" filename="src/shared.ts">',
+    '      <methods>',
+    '        <method name="coveredFirst"><lines><line number="20" hits="1"/></lines></method>',
+    '        <method name="uncoveredFirst"><lines><line number="10" hits="0"/></lines></method>',
+    '      </methods>',
+    '      <lines>',
+    '        <line number="10" hits="0"/>',
+    '        <line number="20" hits="1"/>',
+    '        <line number="30" hits="1" condition-coverage="50% (1/2)"/>',
+    '      </lines>',
+    '    </class>',
+    '    <class name="Full" filename="src/shared.ts">',
+    '      <methods>',
+    '        <method name="coveredSecond"><lines><line number="40" hits="1"/></lines></method>',
+    '      </methods>',
+    '      <lines>',
+    '        <line number="10" hits="1"/>',
+    '        <line number="30" hits="1" condition-coverage="100% (2/2)"/>',
+    '        <line number="40" hits="1"/>',
+    '      </lines>',
+    '    </class>',
+    '  </classes></package></packages>',
+    '</coverage>',
+  ].join('\n');
+
+  const items = parseCobertura(xml);
+  assert.equal(items.length, 1);
+  assert.equal(items[0]?.file, "src/shared.ts");
+  assert.deepEqual(items[0]?.uncoveredFunctions, ["uncoveredFirst"]);
+  assert.deepEqual(items[0]?.uncoveredLines, []);
+  assert.deepEqual(items[0]?.uncoveredBranches, ["1 branch(es) uncovered"]);
+  assert.equal(items[0]?.lineCoverage, 100);
+  assert.equal(items[0]?.functionCoverage, 67);
+  assert.equal(items[0]?.branchCoverage, 75);
+});
+
