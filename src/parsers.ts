@@ -223,7 +223,17 @@ export function parseIstanbul(content: string): UncoveredItem[] {
 }
 
 export function parseCobertura(content: string): UncoveredItem[] {
-  const results: UncoveredItem[] = [];
+  type CoberturaFile = {
+    uncoveredFunctions: string[];
+    uncoveredLines: number[];
+    uncoveredBranches: string[];
+    totalFunctions: number;
+    coveredFunctions: number;
+    lineHits: Map<number, number>;
+    totalBranches: number;
+    hitBranches: number;
+  };
+  const files = new Map<string, CoberturaFile>();
 
   // Extract each <class> block
   const classRe = /<class[^>]+filename="([^"]+)"[^>]*>([\s\S]*?)<\/class>/g;
@@ -234,7 +244,6 @@ export function parseCobertura(content: string): UncoveredItem[] {
     const classBody = classMatch[2] ?? '';
 
     const uncoveredFunctions: string[] = [];
-    const uncoveredLines: number[] = [];
     const uncoveredBranches: string[] = [];
 
     // Compute actual function coverage from method data
@@ -265,12 +274,12 @@ export function parseCobertura(content: string): UncoveredItem[] {
     const linesBody = classBody.replace(/<methods[\s\S]*?<\/methods>/g, '');
     const lineRe2 = /<line[^>]+number="(\d+)"[^>]+hits="(\d+)"[^>]*\/>/g;
     let lm2: RegExpExecArray | null;
-    let totalLines = 0, hitLines = 0;
+    const lineHits = new Map<number, number>();
     while ((lm2 = lineRe2.exec(linesBody)) !== null) {
-      totalLines++;
+      const lineNumber = parseInt(lm2[1] ?? '0', 10);
       const hits = parseInt(lm2[2] ?? '0', 10);
-      if (hits > 0) hitLines++;
-      else uncoveredLines.push(parseInt(lm2[1] ?? '0', 10));
+      const existingHits = lineHits.get(lineNumber) ?? 0;
+      lineHits.set(lineNumber, Math.max(existingHits, hits));
     }
 
     // Parse branches via condition-coverage attribute
@@ -287,17 +296,46 @@ export function parseCobertura(content: string): UncoveredItem[] {
       }
     }
 
-    if (uncoveredLines.length > 0 || uncoveredFunctions.length > 0 || uncoveredBranches.length > 0) {
-      results.push({
-        file: fileName,
-        uncoveredFunctions,
-        uncoveredLines: [...new Set(uncoveredLines)].sort((a, b) => a - b),
-        uncoveredBranches,
-        lineCoverage: totalLines > 0 ? Math.round((hitLines / totalLines) * 100) : 100,
-        functionCoverage: totalFunctions > 0 ? Math.round((coveredFunctions / totalFunctions) * 100) : 100,
-        branchCoverage: totalBranches > 0 ? Math.round((hitBranches / totalBranches) * 100) : 100,
-      });
+    const file: CoberturaFile = files.get(fileName) ?? {
+      uncoveredFunctions: [],
+      uncoveredLines: [],
+      uncoveredBranches: [],
+      totalFunctions: 0,
+      coveredFunctions: 0,
+      lineHits: new Map<number, number>(),
+      totalBranches: 0,
+      hitBranches: 0,
+    };
+    file.uncoveredFunctions.push(...uncoveredFunctions);
+    file.uncoveredBranches.push(...uncoveredBranches);
+    file.totalFunctions += totalFunctions;
+    file.coveredFunctions += coveredFunctions;
+    for (const [lineNumber, hits] of lineHits) {
+      const existingHits = file.lineHits.get(lineNumber) ?? 0;
+      file.lineHits.set(lineNumber, Math.max(existingHits, hits));
     }
+    file.totalBranches += totalBranches;
+    file.hitBranches += hitBranches;
+    files.set(fileName, file);
   }
-  return results;
+
+  return [...files.entries()]
+    .map(([file, data]) => {
+      const uncoveredLines = [...data.lineHits.entries()]
+        .filter(([, hits]) => hits === 0)
+        .map(([lineNumber]) => lineNumber)
+        .sort((a, b) => a - b);
+      const totalLines = data.lineHits.size;
+      const hitLines = [...data.lineHits.values()].filter((hits) => hits > 0).length;
+      return {
+        file,
+        uncoveredFunctions: data.uncoveredFunctions,
+        uncoveredLines,
+        uncoveredBranches: data.uncoveredBranches,
+        lineCoverage: totalLines > 0 ? Math.round((hitLines / totalLines) * 100) : 100,
+        functionCoverage: data.totalFunctions > 0 ? Math.round((data.coveredFunctions / data.totalFunctions) * 100) : 100,
+        branchCoverage: data.totalBranches > 0 ? Math.round((data.hitBranches / data.totalBranches) * 100) : 100,
+      };
+    })
+    .filter(item => item.uncoveredLines.length > 0 || item.uncoveredFunctions.length > 0 || item.uncoveredBranches.length > 0);
 }
