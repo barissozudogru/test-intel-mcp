@@ -263,14 +263,18 @@ export function parseCobertura(content: string): UncoveredItem[] {
 
     // Parse lines from class-level lines block, excluding method bodies
     const linesBody = classBody.replace(/<methods[\s\S]*?<\/methods>/g, '');
-    const lineRe2 = /<line[^>]+number="(\d+)"[^>]+hits="(\d+)"[^>]*\/>/g;
+    const lineRe2 = /<line\b([^>]*)\/>/g;
     let lm2: RegExpExecArray | null;
     let totalLines = 0, hitLines = 0;
     while ((lm2 = lineRe2.exec(linesBody)) !== null) {
+      const attributes = lm2[1] ?? '';
+      const numberMatch = /\bnumber="(\d+)"/.exec(attributes);
+      const hitsMatch = /\bhits="(\d+)"/.exec(attributes);
+      if (!numberMatch || !hitsMatch) continue;
       totalLines++;
-      const hits = parseInt(lm2[2] ?? '0', 10);
+      const hits = parseInt(hitsMatch[1] ?? '0', 10);
       if (hits > 0) hitLines++;
-      else uncoveredLines.push(parseInt(lm2[1] ?? '0', 10));
+      else uncoveredLines.push(parseInt(numberMatch[1] ?? '0', 10));
     }
 
     // Parse branches via condition-coverage attribute
