@@ -188,3 +188,20 @@ test("parseCobertura does not double count method lines or branches", () => {
   assert.equal(items[0]?.branchCoverage, 50);
 });
 
+test("parseCobertura accepts class line attributes in either order", () => {
+  const xml = [
+    '<coverage>',
+    '  <class filename="src/widget.ts">',
+    '    <lines>',
+    '      <line hits="0" number="10"/>',
+    '    </lines>',
+    '  </class>',
+    '</coverage>',
+  ].join('\n');
+
+  const items = parseCobertura(xml);
+  assert.equal(items.length, 1);
+  assert.deepEqual(items[0]?.uncoveredLines, [10]);
+  assert.equal(items[0]?.lineCoverage, 0);
+});
+
