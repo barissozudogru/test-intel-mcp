@@ -32,6 +32,13 @@ test("collectImportedBasenames extracts imported segments directly", () => {
   assert.ok(imported.has("math"));
 });
 
+test("collectImportedBasenames ignores scoped package imports", () => {
+  const imported = new Set();
+  collectImportedBasenames('import { thing } from "@scope/thing";', imported);
+
+  assert.equal(imported.has("thing"), false);
+});
+
 test("walkDir finds files with matching extensions while skipping ignored directories", () => {
   const root = fs.mkdtempSync(path.join(process.cwd(), "test-walk-"));
   try {
