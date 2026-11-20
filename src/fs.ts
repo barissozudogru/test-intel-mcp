@@ -78,6 +78,7 @@ export const IMPORT_SPECIFIER_RE = /(?:from\s+|require\s*\(\s*)['"]([^'"]*\/[^'"
 export function collectImportedBasenames(content: string, imported: Set<string>): void {
   for (const match of content.matchAll(IMPORT_SPECIFIER_RE)) {
     const specifier = match[1] ?? '';
+    if (!specifier.startsWith('.') && !specifier.startsWith('/')) continue;
     const segment = specifier.slice(specifier.lastIndexOf('/') + 1);
     if (segment === '') continue;
     imported.add(segment);
