@@ -32,6 +32,21 @@ test("collectImportedBasenames extracts imported segments directly", () => {
   assert.ok(imported.has("math"));
 });
 
+test("collectImportedBasenames ignores query and fragment suffixes", () => {
+  const imported = new Set();
+  collectImportedBasenames([
+    'import value from "../src/value.ts?url=/asset";',
+    'import other from "../src/other.ts#section/subsection";',
+  ].join("\n"), imported);
+
+  assert.ok(imported.has("value.ts"));
+  assert.ok(imported.has("value"));
+  assert.ok(imported.has("other.ts"));
+  assert.ok(imported.has("other"));
+  assert.equal(imported.has("asset"), false);
+  assert.equal(imported.has("subsection"), false);
+});
+
 test("walkDir finds files with matching extensions while skipping ignored directories", () => {
   const root = fs.mkdtempSync(path.join(process.cwd(), "test-walk-"));
   try {
