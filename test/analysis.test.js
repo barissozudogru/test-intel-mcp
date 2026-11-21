@@ -37,6 +37,28 @@ test("extractFunctions identifies declared functions and arrow functions directl
   assert.equal(funcs[2]?.line, 9);
 });
 
+test("extractFunctionBodies ignores delimiters in template interpolation strings", () => {
+  const source = [
+    "function first() {",
+    "  const value = `${name(\"`\")}`;",
+    "  return value;",
+    "}",
+    "function second() {",
+    "  return 2;",
+    "}",
+  ].join("\n");
+
+  const bodies = extractFunctionBodies(source);
+  assert.deepEqual(bodies.map((body) => body.name), ["first", "second"]);
+  assert.equal(bodies[0]?.body, [
+    "function first() {",
+    "  const value = `${name(\"`\")}`;",
+    "  return value;",
+    "}",
+    "",
+  ].join("\n"));
+});
+
 test("analyzeComplexity measures cyclomatic decision points directly", () => {
   const body = [
     "function process(val: number | null, flag: boolean) {",

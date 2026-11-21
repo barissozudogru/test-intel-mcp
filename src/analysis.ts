@@ -142,6 +142,28 @@ export function countBraceDepthChange(line: string, state: {
 
     // Inside template literal
     if (state.insideTemplateLiteral) {
+      if (state.templateDepth > 0 && state.insideSingleQuote) {
+        if (ch === '\\') { i += 2; continue; }
+        if (ch === "'") { state.insideSingleQuote = false; }
+        i++;
+        continue;
+      }
+      if (state.templateDepth > 0 && state.insideDoubleQuote) {
+        if (ch === '\\') { i += 2; continue; }
+        if (ch === '"') { state.insideDoubleQuote = false; }
+        i++;
+        continue;
+      }
+      if (state.templateDepth > 0 && ch === "'") {
+        state.insideSingleQuote = true;
+        i++;
+        continue;
+      }
+      if (state.templateDepth > 0 && ch === '"') {
+        state.insideDoubleQuote = true;
+        i++;
+        continue;
+      }
       if (ch === '\\') { i += 2; continue; }
       if (ch === '`') { state.insideTemplateLiteral = false; i++; continue; }
       // Template expression ${...}
