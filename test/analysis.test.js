@@ -37,6 +37,24 @@ test("extractFunctions identifies declared functions and arrow functions directl
   assert.equal(funcs[2]?.line, 9);
 });
 
+test("extracts class methods without modifiers", () => {
+  const source = [
+    "class Widget {",
+    "  render(value: string) {",
+    "    return value;",
+    "  }",
+    "}",
+  ].join("\n");
+
+  const funcs = extractFunctions(source);
+  assert.deepEqual(funcs, [{ name: "render", line: 2, kind: "method" }]);
+
+  const bodies = extractFunctionBodies(source);
+  assert.equal(bodies.length, 1);
+  assert.equal(bodies[0]?.name, "render");
+  assert.match(bodies[0]?.body ?? "", /return value;/);
+});
+
 test("analyzeComplexity measures cyclomatic decision points directly", () => {
   const body = [
     "function process(val: number | null, flag: boolean) {",

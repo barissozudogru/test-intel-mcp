@@ -19,6 +19,8 @@ export const FUNCTION_PATTERNS: Array<{ re: RegExp; kind: FunctionRef['kind'] }>
   { re: /^\s*(?:export\s+)?(?:default\s+)?function\*?\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/m, kind: 'function' },
   // async method: async foo(
   { re: /^\s*(?:(?:public|private|protected|static|override|abstract)\s+)*async\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/m, kind: 'async-method' },
+  // unmodified method: render() { or render(): string {
+  { re: /^\s+([A-Za-z_$#][A-Za-z0-9_$]*)\s*\([^)]*\)\s*(?:\:\s*[^\{]+)?\s*\{/m, kind: 'method' },
   // method pattern with zero or more modifiers
   { re: /^\s*(?:(?:public|private|protected|static|override|abstract|get|set)\s+)+([A-Za-z_$#][A-Za-z0-9_$]*)\s*\(/m, kind: 'method' },
   // export const foo = async (  /  export const foo = (
