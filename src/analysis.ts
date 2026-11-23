@@ -411,31 +411,31 @@ function stripComments(code: string): string {
     }
 
     if (insideSingleQuote) {
-      result += ch;
       if (ch === '\\') {
         if (i + 1 < code.length) {
-          result += code[i + 1]!;
+          result += '  ';
           i += 2;
           continue;
         }
       } else if (ch === "'") {
         insideSingleQuote = false;
       }
+      result += ch === '\n' ? '\n' : ch === "'" ? ch : ' ';
       i++;
       continue;
     }
 
     if (insideDoubleQuote) {
-      result += ch;
       if (ch === '\\') {
         if (i + 1 < code.length) {
-          result += code[i + 1]!;
+          result += '  ';
           i += 2;
           continue;
         }
       } else if (ch === '"') {
         insideDoubleQuote = false;
       }
+      result += ch === '\n' ? '\n' : ch === '"' ? ch : ' ';
       i++;
       continue;
     }
@@ -467,7 +467,7 @@ function stripComments(code: string): string {
         i++;
         continue;
       }
-      result += ch;
+      result += ch === '\n' ? '\n' : ' ';
       i++;
       continue;
     }
