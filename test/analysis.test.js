@@ -97,6 +97,33 @@ test("analyzeComplexity preserves regular expression literals containing comment
   assert.equal(metrics.priority, "medium");
 });
 
+test("analyzeComplexity ignores control-flow text inside string literals", () => {
+  const body = [
+    "function inspect(value: string) {",
+    '  const text = "if (fake) && while (fake)";',
+    "  return value;",
+    "}",
+  ].join("\n");
+
+  const metrics = analyzeComplexity("inspect", 1, body);
+  assert.equal(metrics.cyclomaticComplexity, 1);
+  assert.equal(metrics.branches, 0);
+  assert.equal(metrics.loops, 0);
+});
+
+test("analyzeComplexity ignores control-flow text inside template text", () => {
+  const body = [
+    "function render() {",
+    "  return `if (fake) && while (fake)`;",
+    "}",
+  ].join("\n");
+
+  const metrics = analyzeComplexity("render", 1, body);
+  assert.equal(metrics.cyclomaticComplexity, 1);
+  assert.equal(metrics.branches, 0);
+  assert.equal(metrics.loops, 0);
+});
+
 test("analyzeComplexity handles template literal interpolation and nested backticks", () => {
   const body = [
     "function formatUrl(url: string, path: string) {",
