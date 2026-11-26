@@ -222,8 +222,29 @@ export function extractFunctionBodies(content: string): Array<{ name: string; li
       // For arrow functions, check if there is an opening brace within 2 lines
       if (isArrow) {
         let hasBrace = false;
-        for (let k = i; k <= Math.min(i + 1, lines.length - 1); k++) {
-          if ((lines[k] ?? '').includes('{')) { hasBrace = true; break; }
+        const firstLine = lines[i] ?? '';
+        const lastProbeLine = /[;,)]\s*$/.test(firstLine.trimEnd())
+          ? i
+          : Math.min(i + 1, lines.length - 1);
+        const probeState = {
+          insideSingleQuote: false,
+          insideDoubleQuote: false,
+          insideTemplateLiteral: false,
+          insideBlockComment: false,
+          insideLineComment: false,
+          templateDepth: 0,
+        };
+        for (let k = i; k <= lastProbeLine; k++) {
+          const candidate = lines[k] ?? '';
+          for (let braceIndex = candidate.indexOf('{'); braceIndex >= 0; braceIndex = candidate.indexOf('{', braceIndex + 1)) {
+            const braceState = { ...probeState };
+            if (countBraceDepthChange(candidate.slice(0, braceIndex + 1), braceState) > 0) {
+              hasBrace = true;
+              break;
+            }
+          }
+          countBraceDepthChange(candidate, probeState);
+          if (hasBrace) break;
         }
 
         if (!hasBrace) {

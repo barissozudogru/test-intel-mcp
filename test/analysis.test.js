@@ -37,6 +37,30 @@ test("extractFunctions identifies declared functions and arrow functions directl
   assert.equal(funcs[2]?.line, 9);
 });
 
+test("extractFunctionBodies does not treat a brace in an arrow result string as a block", () => {
+  const source = [
+    'const marker = () => "{";',
+    "function next() { return 1; }",
+  ].join("\n");
+
+  const bodies = extractFunctionBodies(source);
+  assert.deepEqual(bodies.map(({ name }) => name), ["marker", "next"]);
+  assert.equal(bodies[0]?.body, 'const marker = () => "{";\n');
+});
+
+test("extractFunctionBodies preserves template state while probing multiline arrow results", () => {
+  const source = [
+    "const marker = () => `",
+    "  {",
+    "`;",
+    "function next() { return 1; }",
+  ].join("\n");
+
+  const bodies = extractFunctionBodies(source);
+  assert.deepEqual(bodies.map(({ name }) => name), ["marker", "next"]);
+  assert.equal(bodies[0]?.body, "const marker = () => `\n  {\n`;\n");
+});
+
 test("analyzeComplexity measures cyclomatic decision points directly", () => {
   const body = [
     "function process(val: number | null, flag: boolean) {",
