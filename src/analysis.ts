@@ -102,6 +102,7 @@ export function countBraceDepthChange(line: string, state: {
   insideLineComment: boolean;
   templateDepth: number; // for nested ${...} inside template literals
 }): number {
+  const trackedState = state as typeof state & { sawOpeningBrace?: boolean };
   let delta = 0;
   let i = 0;
   while (i < line.length) {
@@ -175,7 +176,10 @@ export function countBraceDepthChange(line: string, state: {
 
     // Count braces only in normal code (not inside template expression holes)
     if (state.templateDepth === 0) {
-      if (ch === '{') delta++;
+      if (ch === '{') {
+        trackedState.sawOpeningBrace = true;
+        delta++;
+      }
       if (ch === '}') delta--;
     } else {
       // Inside template ${...}: track depth
@@ -221,9 +225,22 @@ export function extractFunctionBodies(content: string): Array<{ name: string; li
     if (funcName) {
       // For arrow functions, check if there is an opening brace within 2 lines
       if (isArrow) {
+        const probeState = {
+          insideSingleQuote: false,
+          insideDoubleQuote: false,
+          insideTemplateLiteral: false,
+          insideBlockComment: false,
+          insideLineComment: false,
+          templateDepth: 0,
+          sawOpeningBrace: false,
+        };
         let hasBrace = false;
         for (let k = i; k <= Math.min(i + 1, lines.length - 1); k++) {
-          if ((lines[k] ?? '').includes('{')) { hasBrace = true; break; }
+          countBraceDepthChange(lines[k] ?? '', probeState);
+          if (probeState.sawOpeningBrace) {
+            hasBrace = true;
+            break;
+          }
         }
 
         if (!hasBrace) {
@@ -251,6 +268,7 @@ export function extractFunctionBodies(content: string): Array<{ name: string; li
         insideBlockComment: false,
         insideLineComment: false,
         templateDepth: 0,
+        sawOpeningBrace: false,
       };
 
       let bodyLines = '';
@@ -261,7 +279,7 @@ export function extractFunctionBodies(content: string): Array<{ name: string; li
       while (j < lines.length) {
         const l = lines[j] ?? '';
         const delta = countBraceDepthChange(l, braceState);
-        if (delta > 0 && !started) started = true;
+        if ((delta > 0 || braceState.sawOpeningBrace) && !started) started = true;
         depth += delta;
         bodyLines += l + '\n';
         if (started && depth === 0) break;
